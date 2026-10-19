@@ -1,0 +1,48 @@
+{
+  "manifest_version": 3,
+  "name": "Bob Ghost Tutor \u2014 Live Web Inspector",
+  "version": "2.1.0",
+  "description": "AI tutor with contextual code spotlight, Ghost beam, OpenRouter chat, and optional safety checkup.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://openrouter.ai/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://claude.ai/*",
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://gemini.google.com/*",
+        "https://github.com/*",
+        "https://gist.github.com/*"
+      ],
+      "js": [
+        "shield.js"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://claude.ai/*",
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://gemini.google.com/*",
+        "https://github.com/*",
+        "https://gist.github.com/*"
+      ],
+      "js": [
+        "engine.js",
+        "bridge.js",
+        "ghost.js",
+        "bob.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
