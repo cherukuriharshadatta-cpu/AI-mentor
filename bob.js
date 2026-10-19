@@ -153,6 +153,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
       "3. Open 🗂 Project Details on my left sidebar. Each security check explains why it matters, what to do, and has a Copy prompt button to give your coding AI.\n\n" +
       "I'll update the checklist when your plans change. Nothing gets changed in your code automatically.";
     addMsg("assistant", message);
+    if (S.open && S.tab !== "chat") { S.tab = "chat"; $("panel").dataset.tab = "chat"; S.lastHtml = ""; }
     if (!S.open) showToast("Project detected: " + label, "Open Bob → Project Details to review your security plan.");
   }
   function scan() {
