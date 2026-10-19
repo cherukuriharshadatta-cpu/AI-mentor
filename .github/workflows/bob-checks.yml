@@ -24,7 +24,7 @@ jobs:
           node-version: '22'
       - name: JavaScript syntax checks
         run: |
-          for f in background.js bridge.js bob.js engine.js ghost.js shield.js; do node --check "$f"; done
+          for f in background.js bridge.js bob.js engine.js ghost.js shield.js project-model.js; do node --check "$f"; done
       - name: Run extension tests
         run: |
           node tests/test_engine.js
@@ -32,3 +32,4 @@ jobs:
           node tests/smoke_intro.js
           node tests/smoke.js
           node tests/test_ghost.js
+          node tests/test_project_model.js
