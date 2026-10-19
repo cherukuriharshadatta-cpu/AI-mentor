@@ -159,17 +159,23 @@ If something is uncertain, ask one relevant clarifying question. Do not automati
     const summary = isNew
       ? "I can see you're building " + label + ". Here's what to consider beyond the prototype:"
       : "Your project plan now includes new capabilities. Here are the additional requirements:";
-    const important = relevant.slice(0, 4);
-    const lines = important.map((item, i) =>
-      (i + 1) + ". **" + item.title + "** — " + item.why +
-      "\\n   Next: " + item.prompt.replace(/^I'm building[^.]*\\.\\s*/, "").slice(0, 180)
-    );
-    const extra = relevant.length > important.length
-      ? "\\n+" + (relevant.length - important.length) + " more in Project Details." : "";
-    const message = summary + "\\n\\n" + lines.join("\\n\\n") + extra +
-      "\\n\\nOpen **Project Details** for the full plan and copyable implementation prompts. " +
-      "These are recommendations, not proof the work is complete.";
-    addMsg("assistant", message);
+    // Render a compact, readable briefing. All project text is escaped before HTML insertion.
+    const important = relevant.slice(0, 5);
+    const row = document.createElement("div");
+    row.className = "row a project-briefing";
+    const headline = isNew ? "I spotted your project" : "Your project plan changed";
+    row.innerHTML = '<div class="who"><span class="mini">'+MINI+'</span><span>Bob · Project Mentor</span></div>' +
+      '<div class="bub"><div class="briefing-head"><span class="briefing-tag">✦ PROJECT GUIDE</span><h3>'+esc(headline)+'</h3>' +
+      '<p>'+esc(label)+'</p></div><p class="briefing-intro">Let the main AI build the prototype. I’ll help you discover the important steps it might miss.</p>' +
+      '<div class="briefing-cards">'+important.map((item,i)=>
+        '<div class="briefing-card"><span class="briefing-num">'+(i+1)+'</span><div><b>'+esc(item.title)+'</b><p>'+esc(item.why)+'</p>' +
+        '<span class="briefing-next">Next: '+esc(item.prompt.replace(/^I'm building[^.]*\\.\\s*/, "").slice(0,110))+'</span></div></div>').join("")+'</div>' +
+      (relevant.length>important.length?'<p class="muted small">+'+(relevant.length-important.length)+' more recommendations in Project Details.</p>':'')+
+      '<p class="briefing-end">Nothing has been changed automatically. Open <b>Project Details</b> for explanations and prompts to give your coding AI.</p></div>';
+    const viewport = $("msgs").parentNode;
+    const follow = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 110;
+    $("msgs").appendChild(row);
+    if (follow) maybeFollowChat(true);
     if (S.open && S.tab !== "chat") {
       S.tab = "chat";
       $("panel").dataset.tab = "chat";
@@ -482,6 +488,19 @@ If something is uncertain, ask one relevant clarifying question. Do not automati
     .corner-grip{position:absolute;bottom:0;left:0;width:20px;height:20px;z-index:7;cursor:nesw-resize;touch-action:none;border-left:3px solid #c2613d;border-bottom:3px solid #c2613d;opacity:.75}
     .corner-grip:hover{opacity:1}
     @media(prefers-reduced-motion:reduce){.panel .logo .mascot *{animation:none!important}}
+    .project-briefing .bub{background:#18181b;border:1px solid #343036;padding:0;overflow:hidden}
+    .briefing-head{padding:14px;background:linear-gradient(120deg,#39241e,#19191e);border-bottom:1px solid #47312b}
+    .briefing-head h3{font-size:16px;margin:6px 0 3px;color:#f8f1ec}
+    .briefing-head p{font-size:12px;color:#e0bba9;margin:0}
+    .briefing-tag{font-size:10px;letter-spacing:1px;font-weight:750;color:#ef9b73}
+    .briefing-intro,.briefing-end{padding:12px 14px;margin:0;font-size:12px;line-height:1.6;color:#ddd4cf}
+    .briefing-end{border-top:1px solid #343036}
+    .briefing-cards{padding:0 10px 10px;display:grid;gap:7px}
+    .briefing-card{display:flex;align-items:flex-start;gap:9px;padding:10px;background:#222125;border:1px solid #393437;border-radius:10px}
+    .briefing-num{display:grid;place-items:center;background:#563328;color:#ffc29e;border-radius:8px;min-width:25px;height:25px;font-size:12px;font-weight:700}
+    .briefing-card b{font-size:12px;color:#f2eeeb}
+    .briefing-card p{font-size:12px;color:#c3bdb9;line-height:1.5;margin:4px 0}
+    .briefing-next{font-size:11px;color:#e5a98a;line-height:1.5}
   </style>
   <div class="wrap">
     <section class="panel" id="panel" data-tab="check" aria-label="Bob, your coding buddy">
@@ -588,14 +607,21 @@ If something is uncertain, ask one relevant clarifying question. Do not automati
     t = t.replace(/`([^`\n]+)`/g, "<code>$1</code>").replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>");
     return t;
   }
+  function maybeFollowChat(force = false) {
+    const viewport = $("msgs")?.parentNode;
+    if (!viewport) return;
+    if (force || viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 110) viewport.scrollTop = viewport.scrollHeight;
+  }
   function addMsg(role, text) {
+    const viewport = $("msgs").parentNode;
+    const follow = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 110;
     const row = document.createElement("div");
     row.className = "row " + (role === "user" ? "u" : "a");
     row.innerHTML = role === "user"
       ? `<div class="bub">${esc(text)}</div><div class="ts">Just now</div>`
       : `<div class="who"><span class="mini ${text ? "m-idle" : "live m-thinking"}">${MINI}</span><span>Bob</span></div><div class="bub">${md(text)}</div>`;
     $("msgs").appendChild(row);
-    $("msgs").parentNode.scrollTop = 1e9;
+    if (follow) maybeFollowChat(true);
     return row.querySelector(".bub");
   }
   function setChips(list) {
@@ -648,7 +674,10 @@ If something is uncertain, ask one relevant clarifying question. Do not automati
     try {
       const history = S.msgs.slice(-20);
       for await (const c of B.stream({ models: modelOrder(), messages: [{ role: "system", content: chatSystem() }, ...history], key: S.key })) {
-        full += c; const shown = parseGuided(clean(full)).text.replace(/<ghost_steps>[\s\S]*$/,"").trim(); bub.innerHTML = shown ? md(shown) : TYPING; $("msgs").parentNode.scrollTop = 1e9;
+        const viewport = $("msgs").parentNode;
+        const follow = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 110;
+        full += c; const shown = parseGuided(clean(full)).text.replace(/<ghost_steps>[\s\S]*$/,"").trim(); bub.innerHTML = shown ? md(shown) : TYPING;
+        if (follow) maybeFollowChat(true);
       }
       const guided = parseGuided(clean(full));
       full = guided.text;
