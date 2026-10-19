@@ -646,6 +646,23 @@
   ];
   const IMPLIED = { store: ["payments", "database", "login", "personal-data"], backend: ["database"] };
 
+  // A solo/offline game is not automatically a hosted website.
+  // Universal web/backend advice only applies when those capabilities exist.
+  const GAME_FOUNDATION = new Set(["updates","test-fake","ai-review"]);
+  const GAME_ONLINE = new Set(["https","secrets-hidden","env-ignored","validate-input","hide-errors","least-access","backups-test"]);
+  const GAME_SERVER_FEATURES = new Set(["multiplayer","login","database","payments","backend","cloud","online"]);
+  function gameCheckApplies(check, feats) {
+    if (GAME_FOUNDATION.has(check.id)) return true;
+    if (check.id === "server-truth") return feats.has("multiplayer");
+    if (GAME_ONLINE.has(check.id)) {
+      if (![...GAME_SERVER_FEATURES].some(feature => feats.has(feature))) return false;
+      if (check.id === "https") return feats.has("multiplayer") || feats.has("backend") || feats.has("online") || feats.has("login");
+      if (check.id === "secrets-hidden" || check.id === "env-ignored" || check.id === "least-access") return feats.has("keys") || feats.has("ai") || feats.has("database") || feats.has("backend") || feats.has("payments");
+      if (check.id === "backups-test") return feats.has("database") || feats.has("cloud");
+      if (check.id === "validate-input" || check.id === "hide-errors") return feats.has("multiplayer") || feats.has("backend") || feats.has("login");
+    }
+    return true;
+  }
   // Returns every safety step that applies to what they are making, most serious first.
   function buildChecklist(type, featureIds, done) {
     const feats = new Set(featureIds || []);
@@ -661,7 +678,10 @@
         const hit = c.when.feature.find((f) => feats.has(f));
         if (hit) reason = `Because your plan has ${FEATURE_LABEL[hit]}`;
       }
-      if (reason) out.push(Object.assign({}, c, { reason, done: done.has(c.id), order }));
+      if (reason && (type !== "game" || gameCheckApplies(c, feats))) {
+        if (type === "game" && c.when.all) reason = "Relevant to the features planned for this game";
+        out.push(Object.assign({}, c, { reason, done: done.has(c.id), order }));
+      }
     });
     return out.sort((a, b) => SEV_ORDER[a.severity] - SEV_ORDER[b.severity] || a.order - b.order);
   }
