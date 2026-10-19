@@ -377,7 +377,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
   </style>
   <div class="wrap">
     <section class="panel" id="panel" data-tab="check" aria-label="Bob, your coding buddy">
-      <div class="grip" id="grip" title="Drag to make Bob wider or narrower"></div>
+      <div class="grip" id="grip" title="Drag to make Bob wider or narrower"></div><nav class="bob-nav" aria-label="Bob navigation"><div class="bob-nav-group"><button data-act="tab" data-tab="check" aria-label="Security mentor" title="Security mentor">🛡</button><button data-act="tab" data-tab="chat" aria-label="Ask Bob" title="Ask Bob">▤</button></div><div class="bob-nav-group"><button data-act="gear" aria-label="Settings" title="Settings">⚙</button><button data-act="push" aria-label="Toggle page space" title="Make room for Bob">⇄</button><button data-act="close" aria-label="Collapse Bob" title="Collapse Bob">»</button></div></nav><div class="panel-main">
       <header>
         <div class="logo m-idle" id="heroLogo">${robot()}</div>
         <div class="ttl"><div class="name">Bob</div><div class="st"><i class="dot" id="stDot"></i><span id="st">Ready to help</span></div></div>
@@ -392,7 +392,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
         <input id="key" type="password" placeholder="sk-or-..." autocomplete="off"/>
         <label>Model</label><select id="model"></select>
         <label>Your level</label><select id="level"><option value="unknown">Not sure</option><option>beginner</option><option>intermediate</option><option>advanced</option></select>
-        <div class="tg2"><button class="sw" id="swPush" role="switch" aria-checked="false" data-act="push"><i></i></button><span>Make room for Bob (push the page over)</span></div>
+        <label for="widthRange">Sidebar width <span class="size-value" id="widthValue">320px</span></label><input class="size-range" id="widthRange" type="range" min="320" max="800" step="10" value="320"/><div class="size-controls"><button data-act="size" data-w="320">Compact</button><button data-act="size" data-w="440">Comfort</button><button data-act="size" data-w="600">Wide</button></div><div class="tg2"><button class="sw" id="swPush" role="switch" aria-checked="false" data-act="push"><i></i></button><span>Make room for Bob (push the page over)</span></div>
         <small>Free Nemotron models cost nothing, but OpenRouter still needs a free key. <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer">Get one here</a>. Free models may log what you send, so don't share anything private.</small>
       </div>
       <div class="ghost-tools" style="display:none"><button class="b" data-act="ghost">✨ Inspect page</button><button class="b" data-act="ghostprev" title="Previous teaching step">◀</button><button class="b" data-act="ghostnext" title="Next teaching step">▶</button><button class="b" data-act="ghostclear">✕ Clear spotlight</button><span id="ghostStatus" aria-live="polite">Select text or inspect visible code</span></div>
@@ -404,7 +404,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
         <div class="inrow"><textarea id="input" rows="1" placeholder="Ask Bob anything\u2026"></textarea><button class="code" data-act="code" title="Add a code block">&lt;/&gt;</button><button class="send" id="send" data-act="send" aria-label="Send">\u2192</button></div>
         <div class="foot"><span>Free Nemotron models via OpenRouter</span><span>Esc to collapse</span></div>
       </footer>
-    </section>
+    </div></section>
     <div class="toast" id="toast" hidden data-act="toastopen" role="status"><button class="tclose" data-act="toastclose" aria-label="Dismiss">\u2715</button><div class="tt" id="tt"></div><div class="ts2" id="ts2"></div></div>
     <button class="bubble m-idle" id="bubble" aria-label="Open Bob">${robot()}<span class="badge" id="badge" hidden></span></button>
   </div>`;
@@ -453,6 +453,8 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
   function applyDock() {   // width of the sidebar, and (optionally) pushing the page over to make room
     const w = Math.min(Math.max(S.width, 320), Math.max(320, Math.round(innerWidth * 0.9)));
     $("panel").style.width = w + "px";
+    if ($("widthValue")) $("widthValue").textContent = w + "px";
+    if ($("widthRange")) $("widthRange").value = String(w);
     const de = document.documentElement;
     if (de && de.style) {
       if (S.push) de.style.transition = "margin-right .22s ease";
@@ -792,6 +794,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
       case "newchat": newChat(); return;
       case "tab": S.tab = btn.dataset.tab; $("panel").dataset.tab = S.tab; S.lastHtml = ""; pulseEnter(); break;
       case "usepage": setPage(!S.usePage); return;
+      case "size": S.width = Number(btn.dataset.w) || 320; applyDock(); B.savePref("w", String(S.width)); return;
       case "push": S.push = !S.push; $("swPush").classList.toggle("on", S.push); $("swPush").setAttribute("aria-checked", String(S.push)); B.savePref("push", S.push ? "1" : "0"); applyDock(); return;
       case "code": { const t = $("input"); t.value += (t.value && !t.value.endsWith("\n") ? "\n" : "") + "```\n\n```"; t.focus(); return; }
       case "send": sendChat(); return;
@@ -857,6 +860,8 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
   });
   grip.addEventListener("pointerup", () => { if (rz) B.savePref("w", String(S.width)); rz = null; });
 
+  $("widthRange").addEventListener("input", e => { S.width = Number(e.target.value) || 320; applyDock(); });
+  $("widthRange").addEventListener("change", () => B.savePref("w", String(S.width)));
   // ------------------------------------------------------------------ start
   (async function init() {
     await load();
