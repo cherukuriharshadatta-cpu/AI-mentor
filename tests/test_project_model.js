@@ -1,0 +1,15 @@
+const assert=require("assert");
+const M=require("../project-model.js");
+const ids=(type,messages)=>M.plan(M.infer(type,messages)).map(x=>x.id);
+assert(ids("game",["Build an offline single-player strategy game"]).includes("game"));
+assert(!ids("game",["Build an offline single-player strategy game"]).includes("payments"));
+assert(!ids("game",["Build an offline single-player strategy game"]).includes("network"));
+assert(ids("website",["Build a website with login and payment checkout"]).includes("auth"));
+assert(ids("website",["Build a website with login and payment checkout"]).includes("payments"));
+assert(ids("bot",["Create an AI agent with tool calling"]).includes("agents"));
+assert(ids("backend",["Build a hosted backend API"]).includes("operations"));
+assert(!ids("website",["Build a simple landing page"]).includes("agents"));
+const plan=M.plan(M.infer("website",["Build a website"]),{"tests":"reported-complete"});
+assert.equal(plan.find(x=>x.id==="tests").status,"reported-complete");
+assert(plan.every(x=>x.status!=="verified"));
+console.log("Bob v3 capability planning tests passed");
