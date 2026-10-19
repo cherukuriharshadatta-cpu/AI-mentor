@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Bob Ghost Tutor — Live Web Inspector",
-  "version": "2.5.2",
+  "version": "3.0.0",
   "description": "Bob Security Mentor with Stitch-inspired compact navigation and adjustable sidebar.",
   "permissions": [
     "storage"
@@ -40,6 +40,7 @@
         "engine.js",
         "bridge.js",
         "ghost.js",
+        "project-model.js",
         "bob.js"
       ],
       "run_at": "document_idle"
