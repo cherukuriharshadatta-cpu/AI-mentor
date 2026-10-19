@@ -215,6 +215,10 @@ If something is uncertain, ask one relevant clarifying question. Do not automati
       S.lastUserTexts = userTexts.slice();
       S.v3Messages = userTexts.slice(-12);
       S.guess = userTexts.length ? E.detectProject(userTexts) : pageText ? E.detectProject([pageText]) : null;
+      if ((!S.guess || S.guess.confidence < 0.6) && asstTexts.length) {
+        const tentative = E.detectProject(asstTexts.slice(-6));
+        if (tentative.confidence >= 0.6) S.guess = tentative;
+      }
       // For games, only user-confirmed capabilities may activate security checks.
       // Assistant text often brainstorms optional features that are not in the plan.
       const inferred = E.detectFeatures([...userTexts, ...asstTexts, pageText]);
@@ -226,7 +230,7 @@ If something is uncertain, ask one relevant clarifying question. Do not automati
         if (mode !== "online") S.features = S.features.filter(f => f !== "multiplayer");
         S.gameMode = mode;
       } else { S.features = inferred; S.gameMode = "unknown"; }
-      autoProjectIntroduction(userTexts, asstTexts);
+      autoProjectIntroduction(userTexts.length ? userTexts : (pageText ? [pageText] : asstTexts.slice(-5)), asstTexts);
     }
     S.scanned = true;
     announce();
@@ -595,7 +599,7 @@ If something is uncertain, ask one relevant clarifying question. Do not automati
   function setOpen(on) {
     S.open = on; $("panel").classList.toggle("open", on); $("bubble").style.display = on ? "none" : "";
     S.lastHtml = ""; place(); applyDock(); if (on) { hideToast(); pulseEnter(); }
-    if (on) { if (!S.msgs.length && !$("msgs").children.length) greet(); render(); }
+    if (on) { if (!S.msgs.length && !$("msgs").children.length) greet(); render(); if (S.consent && !S.paused) setTimeout(scan, 0); }
   }
 
   // ------------------------------------------------------------------- chat
