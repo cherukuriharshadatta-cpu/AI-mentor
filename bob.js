@@ -39,7 +39,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
     key: "", level: "unknown", model: "auto", settingsOpen: false,
     // inspector
     ghostContext: "",
-    lastProjectAnnouncement: "", projectName: "", gameMode: "unknown", gameModeOverride: null, v3Messages: [], v3Status: {},
+    lastProjectAnnouncement: "", lastProjectCapabilities: "", lastProjectRequirementIds: [], projectName: "", gameMode: "unknown", gameModeOverride: null, v3Messages: [], v3Status: {},
     // checkup
     consent: false, paused: false, scanned: false, open: false,
     learned: new Set(), dismissed: new Set(), projectType: null, guess: null, selGuess: null,
@@ -111,7 +111,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
     S.dismissed.clear(); S.opts.clear(); S.showAll = false; S.askChange = false; S.note = "";
     S.features = []; S.seenFeatures = new Set(); S.said = new Set(); S.annType = null; S.textHash = "";
     S.showList = false; S.showNeeds = false; S.done = new Set(S.doneAll[ROUTE_KEY()] || []);
-    S.lastProjectAnnouncement = ""; S.projectName = ""; S.gameMode = "unknown"; S.gameModeOverride = null; S.v3Messages = []; S.v3Status = {};
+    S.lastProjectAnnouncement = ""; S.lastProjectCapabilities = ""; S.lastProjectRequirementIds = []; S.projectName = ""; S.gameMode = "unknown"; S.gameModeOverride = null; S.v3Messages = []; S.v3Status = {};
     S.reads = { users: 0, code: 0, text: false };
     hideToast();
   }
@@ -135,26 +135,48 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
     }
     return "";
   }
+  // Local, consent-based project guidance. Only announce when the project or
+  // user-stated capabilities change, not for every DOM mutation or model token.
   function autoProjectIntroduction(userTexts, assistantTexts) {
     if (!S.consent || S.paused || !userTexts.length || !assistantTexts.length) return;
     const t = currentType();
-    if (!t || t === "unknown") return;
+    if (!t || t === "unknown" || !window.BobProjectModel) return;
     const projectName = extractProjectName(userTexts, assistantTexts);
+    const context = window.BobProjectModel.infer(t, userTexts);
+    const capabilityKey = [...context.capabilities].sort().join("|");
     const identity = ROUTE_KEY() + "|" + t;
-    if (identity === S.lastProjectAnnouncement) return;
+    const isNew = identity !== S.lastProjectAnnouncement;
+    if (!isNew && capabilityKey === S.lastProjectCapabilities) return;
+    const plan = window.BobProjectModel.plan(context, S.v3Status);
+    const newIds = new Set(plan.filter(x => !S.lastProjectRequirementIds.includes(x.id)).map(x => x.id));
+    const relevant = isNew ? plan : plan.filter(x => newIds.has(x.id));
+    // Record the state even if no new requirement was introduced.
     S.lastProjectAnnouncement = identity;
-    S.projectName = projectName;
-    const label = projectName ? projectName + " (" + typeLabel(t) + ")" : typeLabel(t);
-    const checks = E.buildChecklist(t, S.features).length;
-    const message = "You're building " + label + "! 🎮\n\n" +
-      "1. Let ChatGPT finish your first playable prototype before worrying about deployment.\n" +
-      "2. Then we'll make it safe and ready for real users. I found " + checks +
-      " relevant security steps based on your project and features so far.\n" +
-      "3. Open 🗂 Project Details on my left sidebar. Each security check explains why it matters, what to do, and has a Copy prompt button to give your coding AI.\n\n" +
-      "I'll update the checklist when your plans change. Nothing gets changed in your code automatically.";
+    S.lastProjectCapabilities = capabilityKey;
+    S.lastProjectRequirementIds = plan.map(x => x.id);
+    if (projectName) S.projectName = projectName;
+    if (!relevant.length) return;
+    const label = S.projectName ? S.projectName + " (" + typeLabel(t) + ")" : typeLabel(t);
+    const summary = isNew
+      ? "I can see you're building " + label + ". Here's what to consider beyond the prototype:"
+      : "Your project plan now includes new capabilities. Here are the additional requirements:";
+    const important = relevant.slice(0, 4);
+    const lines = important.map((item, i) =>
+      (i + 1) + ". **" + item.title + "** — " + item.why +
+      "\\n   Next: " + item.prompt.replace(/^I'm building[^.]*\\.\\s*/, "").slice(0, 180)
+    );
+    const extra = relevant.length > important.length
+      ? "\\n+" + (relevant.length - important.length) + " more in Project Details." : "";
+    const message = summary + "\\n\\n" + lines.join("\\n\\n") + extra +
+      "\\n\\nOpen **Project Details** for the full plan and copyable implementation prompts. " +
+      "These are recommendations, not proof the work is complete.";
     addMsg("assistant", message);
-    if (S.open && S.tab !== "chat") { S.tab = "chat"; $("panel").dataset.tab = "chat"; S.lastHtml = ""; }
-    if (!S.open) showToast("Project detected: " + label, "Open Bob → Project Details to review your security plan.");
+    if (S.open && S.tab !== "chat") {
+      S.tab = "chat";
+      $("panel").dataset.tab = "chat";
+      S.lastHtml = "";
+    }
+    if (!S.open) showToast("Bob found project guidance", "Open Bob chat to see what's needed next.");
   }
   function scan() {
     if (!B.alive()) { stopReading(); render(); return; }   // the extension was updated: this tab needs a refresh
@@ -581,7 +603,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
     $("chips").innerHTML = list.map(([i, l, q], k) => `<button data-act="quick" data-i="${k}"><i>${i}</i>${esc(l)}</button>`).join("");
   }
   function greet() {
-    addMsg("assistant", "I can explain security recommendations for your project. The Security mentor tab watches the conversation only after you enable it.");
+    addMsg("assistant", S.consent ? "I’m following this project conversation. I’ll post relevant requirements and next steps here when the plan changes. Open Project Details for the full roadmap." : "Enable conversation watching in Project Details to receive automatic project guidance here.");
     setChips(QUICK);
   }
   function newChat() { S.msgs = []; $("msgs").innerHTML = ""; greet(); }
