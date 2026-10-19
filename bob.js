@@ -136,6 +136,28 @@ If something is uncertain, ask one relevant clarifying question. Do not automati
   }
   // Local, consent-based project guidance. Only announce when the project or
   // user-stated capabilities change, not for every DOM mutation or model token.
+  // Short project-readiness copy: no generated code, implementation text, or jargon.
+  const friendlyAdvice = {
+    tests:["🧪 Test what people will use","Try the main feature, then try breaking it. Fix problems before sharing."],
+    errors:["🧯 Make failures understandable","If something goes wrong, people should know what happened and what to do next."],
+    release:["🚀 Make it ready to publish","Create a working release, try it on a fresh device, then share it."],
+    accessibility:["📱 Make it easy to use","Check phones, computers, keyboard controls and readable text."],
+    secrets:["🔑 Keep secret keys private","Never leave passwords or private API keys in public code."],
+    auth:["🔐 Protect user accounts","If people log in, keep their accounts private and stop strangers getting in."],
+    payments:["💳 Make payments safe","If you accept money, verify each payment with your payment provider."],
+    data:["🗂 Protect people's information","Only collect what you need. Keep it private and plan how to delete it."],
+    network:["🌐 Protect online connections","If your project talks to a server, protect the connection and check incoming requests."],
+    game:["🎮 Check the game actually works","Test playing, saving and controls on every device you plan to support."],
+    multiplayer:["🕹 Stop unfair multiplayer actions","If players compete online, the server must check the results."],
+    agents:["🤖 Keep AI actions under control","If an AI uses tools, give it limited permissions and ask before important actions."],
+    "agent-evals":["🧠 Check what the AI gets wrong","Try normal and tricky questions before giving people access."],
+    operations:["🛟 Prepare for problems after launch","For a live service, track errors and have a way to recover."],
+    core:["🎯 Finish the important feature first","Make sure the main thing people came for works from start to finish."]
+  };
+  function chooseLaunchAdvice(plan) {
+    const priority=["secrets","auth","payments","data","network","multiplayer","agents","agent-evals","game","accessibility","tests","errors","release","operations","core"];
+    return priority.filter(id=>plan.some(item=>item.id===id)).slice(0,5).map(id=>({id,title:friendlyAdvice[id][0],detail:friendlyAdvice[id][1]}));
+  }
   function autoProjectIntroduction(userTexts, assistantTexts) {
     if (!S.consent || S.paused || !userTexts.length) return;
     const t = currentType();
@@ -156,22 +178,17 @@ If something is uncertain, ask one relevant clarifying question. Do not automati
     if (projectName) S.projectName = projectName;
     if (!relevant.length) return;
     const label = S.projectName ? S.projectName + " (" + typeLabel(t) + ")" : typeLabel(t);
-    const summary = isNew
-      ? "I can see you're building " + label + ". Here's what to consider beyond the prototype:"
-      : "Your project plan now includes new capabilities. Here are the additional requirements:";
-    // Render a compact, readable briefing. All project text is escaped before HTML insertion.
-    const important = relevant.slice(0, 5);
+    const advice = chooseLaunchAdvice(relevant);
+    if (!advice.length) return;
     const row = document.createElement("div");
     row.className = "row a project-briefing";
-    const headline = isNew ? "I spotted your project" : "Your project plan changed";
-    row.innerHTML = '<div class="who"><span class="mini">'+MINI+'</span><span>Bob · Project Mentor</span></div>' +
-      '<div class="bub"><div class="briefing-head"><span class="briefing-tag">✦ PROJECT GUIDE</span><h3>'+esc(headline)+'</h3>' +
-      '<p>'+esc(label)+'</p></div><p class="briefing-intro">Let the main AI build the prototype. I’ll help you discover the important steps it might miss.</p>' +
-      '<div class="briefing-cards">'+important.map((item,i)=>
-        '<div class="briefing-card"><span class="briefing-num">'+(i+1)+'</span><div><b>'+esc(item.title)+'</b><p>'+esc(item.why)+'</p>' +
-        '<span class="briefing-next">Next: '+esc(item.prompt.replace(/^I'm building[^.]*\\.\\s*/, "").slice(0,110))+'</span></div></div>').join("")+'</div>' +
-      (relevant.length>important.length?'<p class="muted small">+'+(relevant.length-important.length)+' more recommendations in Project Details.</p>':'')+
-      '<p class="briefing-end">Nothing has been changed automatically. Open <b>Project Details</b> for explanations and prompts to give your coding AI.</p></div>';
+    row.innerHTML = '<div class="who"><span class="mini">'+MINI+'</span><span>Bob · Launch Guide</span></div>' +
+      '<div class="bub"><div class="briefing-head"><span class="briefing-tag">✦ BEFORE YOU PUBLISH</span><h3>'+esc(isNew?"Let's get your project ready!":"Here’s what your new feature needs")+'</h3>' +
+      '<p>'+esc(label)+'</p></div>' +
+      '<p class="briefing-intro">Your coding AI can build it. I’ll help you make sure it’s safe, works properly and is ready for other people.</p>' +
+      '<div class="briefing-cards">'+advice.map(item=>
+        '<div class="briefing-card"><div><b>'+esc(item.title)+'</b><p>'+esc(item.detail)+'</p></div></div>').join("")+'</div>' +
+      '<p class="briefing-end">Want help with one? Open <b>Project Details</b> for a prompt to give your coding AI. I haven’t checked your actual code yet.</p></div>';
     const viewport = $("msgs").parentNode;
     const follow = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 110;
     $("msgs").appendChild(row);
