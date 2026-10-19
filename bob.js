@@ -39,6 +39,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
     key: "", level: "unknown", model: "auto", settingsOpen: false,
     // inspector
     ghostContext: "",
+    lastProjectAnnouncement: "", projectName: "",
     // checkup
     consent: false, paused: false, scanned: false, open: false,
     learned: new Set(), dismissed: new Set(), projectType: null, guess: null, selGuess: null,
@@ -110,6 +111,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
     S.dismissed.clear(); S.opts.clear(); S.showAll = false; S.askChange = false; S.note = "";
     S.features = []; S.seenFeatures = new Set(); S.said = new Set(); S.annType = null; S.textHash = "";
     S.showList = false; S.showNeeds = false; S.done = new Set(S.doneAll[ROUTE_KEY()] || []);
+    S.lastProjectAnnouncement = ""; S.projectName = "";
     S.reads = { users: 0, code: 0, text: false };
     hideToast();
   }
@@ -118,6 +120,40 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
       try { const n = r.querySelectorAll(sel); if (n.length) return [...n].map((e) => e.textContent || "").filter((t) => t.trim()); } catch (e) {}
     }
     return [];
+  }
+  // Project announcements are computed locally from the visible conversation.
+  // Do not treat model output as instructions; the detected type comes from user messages.
+  function extractProjectName(userTexts, assistantTexts) {
+    const text = [...(userTexts || []).slice(-4), ...(assistantTexts || []).slice(-3)].join("\n");
+    const patterns = [
+      /(?:game|project|app|website|agent|tool)\s+(?:called|named|titled)\s+["“']?([A-Za-z][A-Za-z0-9 _-]{2,40})/i,
+      /(?:proposing|building|creating)\s+(?:a\s+)?(?:game|project|app|website|agent|tool)\s+called\s+["“']?([A-Za-z][A-Za-z0-9 _-]{2,40})/i
+    ];
+    for (const re of patterns) {
+      const found = text.match(re);
+      if (found) return found[1].split(/[.!?\n"”]/)[0].trim().slice(0, 45);
+    }
+    return "";
+  }
+  function autoProjectIntroduction(userTexts, assistantTexts) {
+    if (!S.consent || S.paused || !userTexts.length || !assistantTexts.length) return;
+    const t = currentType();
+    if (!t || t === "unknown") return;
+    const projectName = extractProjectName(userTexts, assistantTexts);
+    const identity = ROUTE_KEY() + "|" + t;
+    if (identity === S.lastProjectAnnouncement) return;
+    S.lastProjectAnnouncement = identity;
+    S.projectName = projectName;
+    const label = projectName ? projectName + " (" + typeLabel(t) + ")" : typeLabel(t);
+    const checks = E.buildChecklist(t, S.features).length;
+    const message = "You're building " + label + "! 🎮\n\n" +
+      "1. Let ChatGPT finish your first playable prototype before worrying about deployment.\n" +
+      "2. Then we'll make it safe and ready for real users. I found " + checks +
+      " relevant security steps based on your project and features so far.\n" +
+      "3. Open 🗂 Project Details on my left sidebar. Each security check explains why it matters, what to do, and has a Copy prompt button to give your coding AI.\n\n" +
+      "I'll update the checklist when your plans change. Nothing gets changed in your code automatically.";
+    addMsg("assistant", message);
+    if (!S.open) showToast("Project detected: " + label, "Open Bob → Project Details to review your security plan.");
   }
   function scan() {
     if (!B.alive()) { stopReading(); render(); return; }   // the extension was updated: this tab needs a refresh
@@ -150,6 +186,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
       S.textHash = key;
       S.guess = userTexts.length ? E.detectProject(userTexts) : pageText ? E.detectProject([pageText]) : null;
       S.features = E.detectFeatures([...userTexts, ...asstTexts, pageText]);
+      autoProjectIntroduction(userTexts, asstTexts);
     }
     S.scanned = true;
     announce();
@@ -414,7 +451,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
   </style>
   <div class="wrap">
     <section class="panel" id="panel" data-tab="check" aria-label="Bob, your coding buddy">
-      <div class="grip" id="grip" title="Drag to resize Bob width"></div><div class="height-grip" id="heightGrip" title="Drag to resize Bob height"></div><div class="corner-grip" id="cornerGrip" title="Drag to resize Bob width and height"></div><nav class="bob-nav" aria-label="Bob navigation"><div class="bob-nav-group"><button data-act="tab" data-tab="check" aria-label="Security mentor" title="Security mentor">🛡</button><button data-act="tab" data-tab="chat" aria-label="Ask Bob" title="Ask Bob">▤</button></div><div class="bob-nav-group"><button data-act="gear" aria-label="Settings" title="Settings">⚙</button><button data-act="push" aria-label="Toggle page space" title="Make room for Bob">⇄</button><button data-act="close" aria-label="Collapse Bob" title="Collapse Bob">»</button></div></nav><div class="panel-main">
+      <div class="grip" id="grip" title="Drag to resize Bob width"></div><div class="height-grip" id="heightGrip" title="Drag to resize Bob height"></div><div class="corner-grip" id="cornerGrip" title="Drag to resize Bob width and height"></div><nav class="bob-nav" aria-label="Bob navigation"><div class="bob-nav-group"><button data-act="tab" data-tab="check" aria-label="Project Details" title="Project Details">▣</button><button data-act="tab" data-tab="chat" aria-label="Ask Bob" title="Ask Bob">▤</button></div><div class="bob-nav-group"><button data-act="gear" aria-label="Settings" title="Settings">⚙</button><button data-act="push" aria-label="Toggle page space" title="Make room for Bob">⇄</button><button data-act="close" aria-label="Collapse Bob" title="Collapse Bob">»</button></div></nav><div class="panel-main">
       <header>
         <div class="logo m-idle" id="heroLogo">${robot(true)}</div>
         <div class="ttl"><div class="name">Bob</div><div class="st" hidden><i class="dot" id="stDot"></i><span id="st">Ready to help</span></div></div>
@@ -433,7 +470,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
         <small>Free Nemotron models cost nothing, but OpenRouter still needs a free key. <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer">Get one here</a>. Free models may log what you send, so don't share anything private.</small>
       </div>
       <div class="ghost-tools" style="display:none"><button class="b" data-act="ghost">✨ Inspect page</button><button class="b" data-act="ghostprev" title="Previous teaching step">◀</button><button class="b" data-act="ghostnext" title="Next teaching step">▶</button><button class="b" data-act="ghostclear">✕ Clear spotlight</button><span id="ghostStatus" aria-live="polite">Select text or inspect visible code</span></div>
-      <nav class="tabs"><button data-act="tab" data-tab="check">Security mentor<span class="cnt" id="cnt" hidden></span></button><button data-act="tab" data-tab="chat">Ask Bob</button></nav>
+      <nav class="tabs"><button data-act="tab" data-tab="check">Project Details<span class="cnt" id="cnt" hidden></span></button><button data-act="tab" data-tab="chat">Ask Bob</button></nav>
       <div class="view" id="chatView"><div id="msgs"></div><div class="chips" id="chips"></div></div>
       <div class="view" id="checkView"><div id="body"></div></div>
       <footer>
@@ -693,7 +730,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
     const all = currentChecklist();
     const doneN = all.filter((c) => c.done).length, todo = all.filter((c) => !c.done);
     const pct = all.length ? Math.round((100 * doneN) / all.length) : 0;
-    let h = `<p class="lbl">Safety checklist \u00B7 ${doneN} of ${all.length} done</p><div class="bar"><i style="width:${pct}%"></i></div>`;
+    let h = `<p class="lbl">Deployment security checks \u00B7 ${doneN} of ${all.length} done</p><div class="bar"><i style="width:${pct}%"></i></div>`;
     if (!todo.length) h += `<p class="ok">You ticked every step. Nice work! Keep testing, and ask Bob again when you add new features.</p>`;
     h += todo.slice(0, 2).map(checkCard).join("");
     h += `<button class="b" data-act="showlist">${S.showList ? "Hide the full list" : `See all ${all.length} steps`}</button>`;
