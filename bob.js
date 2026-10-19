@@ -156,7 +156,12 @@ If something is uncertain, ask one relevant clarifying question. Do not automati
   };
   function chooseLaunchAdvice(plan) {
     const priority=["secrets","auth","payments","data","network","multiplayer","agents","agent-evals","game","accessibility","tests","errors","release","operations","core"];
-    return priority.filter(id=>plan.some(item=>item.id===id)).slice(0,5).map(id=>({id,title:friendlyAdvice[id][0],detail:friendlyAdvice[id][1]}));
+    const present=new Set(plan.map(item=>item.id));
+    const critical=priority.filter(id=>present.has(id)&&!["release","tests","errors","core"].includes(id)).slice(0,3);
+    if (present.has("tests")) critical.push("tests");
+    if (present.has("release")) critical.push("release");
+    if (!critical.length && present.has("core")) critical.push("core");
+    return critical.slice(0,5).map(id=>({id,title:friendlyAdvice[id][0],detail:friendlyAdvice[id][1]}));
   }
   function autoProjectIntroduction(userTexts, assistantTexts) {
     if (!S.consent || S.paused || !userTexts.length) return;
