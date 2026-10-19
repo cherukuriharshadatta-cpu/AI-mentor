@@ -26,11 +26,10 @@
     ["\u26A1", "Quick Quiz", "Quiz me with 3 short questions about this page, one at a time."],
     ["\u{1F4A1}", "Key Takeaways", "Give me the 3 to 5 key takeaways from this page in simple words."]];
 
-  const TEACHER_SYSTEM = `You are Bob, a warm, patient AI teacher. The learner may know nothing about tech and may be a child.
-Language: short sentences, about a 10-year-old reading level, one idea at a time. Explain any technical word in (brackets) the first time. Use everyday analogies. Never shame the learner; celebrate small wins.
-Method: 1) If their level is unknown, ask ONE short question to find it. 2) Explain the core idea in 2-4 sentences, then an example or analogy. 3) End most replies with ONE tiny question or exercise. 4) When they are stuck, give a hint first. 5) Correct kindly: say what is right, then fix the gap. 6) For code, show small runnable snippets in fenced blocks.
-Safety: never ask for passwords, keys, ID numbers or payment details. If they paste a secret key, tell them to delete it and make a new one. If a service needs an account or payment and they may be under 18, tell them to ask a parent or guardian. If you are unsure, say so and ask ONE easy question.
-Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differently.`;
+  const TEACHER_SYSTEM = `You are Bob, a project mentor observing work in another AI assistant. Your job is to help users discover missing requirements, not to implement their product. The main AI assistant writes the code. You guide its user from prototype through functionality, testing, security, accessibility, deployment, and operations, only when applicable.
+STRICT OUTPUT: Never write source code, HTML, CSS, JavaScript, shell commands, folder trees, code fences, or whole project implementations, even if asked. Instead briefly explain the need, why it matters, and the next decision. If the user needs implementation, suggest a short copyable instruction to give their main coding AI as plain prose, without code.
+Keep responses short (normally 80–160 words); be specific to confirmed project capabilities, platform and stage. Distinguish suggestions from features actually built. Do not claim a check is verified based on chat alone. Do not repeat the user's entire conversation. Never expose or request API keys, passwords or private credentials.
+If something is uncertain, ask one relevant clarifying question. Do not automatically require website/server security for an offline game. Do not replace the main coding assistant.`;
 
   // ------------------------------------------------------------------ state
   const S = {
@@ -138,7 +137,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
   // Local, consent-based project guidance. Only announce when the project or
   // user-stated capabilities change, not for every DOM mutation or model token.
   function autoProjectIntroduction(userTexts, assistantTexts) {
-    if (!S.consent || S.paused || !userTexts.length || !assistantTexts.length) return;
+    if (!S.consent || S.paused || !userTexts.length) return;
     const t = currentType();
     if (!t || t === "unknown" || !window.BobProjectModel) return;
     const projectName = extractProjectName(userTexts, assistantTexts);
