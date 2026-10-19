@@ -48,7 +48,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
     opts: new Set(), note: "", sent: [], route: location.pathname, lastHtml: "",
     features: [], seenFeatures: new Set(), done: new Set(), doneAll: {}, said: new Set(),
     annType: null, toastAt: 0, textHash: "", showList: false, showNeeds: false, introSeen: false,
-    width: 320, push: false, railHtml: "", railKey: "", railPrevDone: null, railFresh: new Set(),
+    width: 440, height: 0, push: false, railHtml: "", railKey: "", railPrevDone: null, railFresh: new Set(),
   };
   let pos = null;
   const ROUTE_KEY = () => ORIGIN + location.pathname;
@@ -82,7 +82,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
       const p = (await B.loadPrefs()) || {};
       S.key = p.key || ""; S.level = p.level || "unknown"; S.model = p.model || "auto";
       if (p.pos) pos = JSON.parse(p.pos);
-      S.width = Number(p.w) || 320; S.push = p.push === "1";
+      S.width = Number(p.w) || 440; S.height = Number(p.h) || 0; S.push = p.push === "1";
     } catch (e) {}
   }
 
@@ -192,7 +192,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
   // Stitch-inspired vector artwork: original terracotta face with Gemini-spectrum motion.
   // SVG symbols have unique IDs per instance because Bob appears in multiple places.
   let mascotId = 0;
-  const robot = () => { const id = ++mascotId; return `<svg class="mascot" viewBox="0 0 512 512" aria-hidden="true">
+  const robot = (compact = false) => { const id = ++mascotId; return `<svg class="mascot" viewBox="${compact ? "144 142 224 224" : "0 0 512 512"}" aria-hidden="true">
   <defs>
     <linearGradient id="bobSpectrum${id}" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#4285F4"/><stop offset=".3" stop-color="#1FA971"/>
@@ -402,12 +402,21 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
     .size-value{font-size:11px;color:var(--muted)}
     @media(max-width:480px){.bob-nav{flex-basis:42px!important;width:42px!important;min-width:42px}.panel header{padding:9px}.panel .view{padding:9px}}
     .panel .rail[hidden],.panel .st[hidden],.panel .sync[hidden]{display:none!important}
+    /* Larger, zoomed-in face that keeps the existing mood animations. */
+    .panel .logo{width:44px;height:44px;flex:none;border-radius:11px;overflow:hidden;background:#f3dfd5;border:1px solid #a9765b}
+    .panel .logo .mascot{width:100%;height:100%}
+    .mini{border-radius:8px;overflow:hidden;background:#f3dfd5}
+    .height-grip{position:absolute;left:48px;right:0;bottom:0;height:8px;cursor:ns-resize;z-index:6;touch-action:none}
+    .height-grip:hover{background:rgba(194,97,61,.24)}
+    .corner-grip{position:absolute;bottom:0;left:0;width:20px;height:20px;z-index:7;cursor:nesw-resize;touch-action:none;border-left:3px solid #c2613d;border-bottom:3px solid #c2613d;opacity:.75}
+    .corner-grip:hover{opacity:1}
+    @media(prefers-reduced-motion:reduce){.panel .logo .mascot *{animation:none!important}}
   </style>
   <div class="wrap">
     <section class="panel" id="panel" data-tab="check" aria-label="Bob, your coding buddy">
-      <div class="grip" id="grip" title="Drag to make Bob wider or narrower"></div><nav class="bob-nav" aria-label="Bob navigation"><div class="bob-nav-group"><button data-act="tab" data-tab="check" aria-label="Security mentor" title="Security mentor">🛡</button><button data-act="tab" data-tab="chat" aria-label="Ask Bob" title="Ask Bob">▤</button></div><div class="bob-nav-group"><button data-act="gear" aria-label="Settings" title="Settings">⚙</button><button data-act="push" aria-label="Toggle page space" title="Make room for Bob">⇄</button><button data-act="close" aria-label="Collapse Bob" title="Collapse Bob">»</button></div></nav><div class="panel-main">
+      <div class="grip" id="grip" title="Drag to resize Bob width"></div><div class="height-grip" id="heightGrip" title="Drag to resize Bob height"></div><div class="corner-grip" id="cornerGrip" title="Drag to resize Bob width and height"></div><nav class="bob-nav" aria-label="Bob navigation"><div class="bob-nav-group"><button data-act="tab" data-tab="check" aria-label="Security mentor" title="Security mentor">🛡</button><button data-act="tab" data-tab="chat" aria-label="Ask Bob" title="Ask Bob">▤</button></div><div class="bob-nav-group"><button data-act="gear" aria-label="Settings" title="Settings">⚙</button><button data-act="push" aria-label="Toggle page space" title="Make room for Bob">⇄</button><button data-act="close" aria-label="Collapse Bob" title="Collapse Bob">»</button></div></nav><div class="panel-main">
       <header>
-        <div class="logo m-idle" id="heroLogo">${robot()}</div>
+        <div class="logo m-idle" id="heroLogo">${robot(true)}</div>
         <div class="ttl"><div class="name">Bob</div><div class="st" hidden><i class="dot" id="stDot"></i><span id="st">Ready to help</span></div></div>
         <button class="ib" data-act="gear" aria-label="Settings" title="Settings">\u2699</button>
         <button class="ib" data-act="newchat" aria-label="New chat" title="New chat">\u21BB</button>
@@ -420,7 +429,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
         <input id="key" type="password" placeholder="sk-or-..." autocomplete="off"/>
         <label>Model</label><select id="model"></select>
         <label>Your level</label><select id="level"><option value="unknown">Not sure</option><option>beginner</option><option>intermediate</option><option>advanced</option></select>
-        <label for="widthRange">Sidebar width <span class="size-value" id="widthValue">320px</span></label><input class="size-range" id="widthRange" type="range" min="320" max="800" step="10" value="320"/><div class="size-controls"><button data-act="size" data-w="320">Compact</button><button data-act="size" data-w="440">Comfort</button><button data-act="size" data-w="600">Wide</button></div><div class="tg2"><button class="sw" id="swPush" role="switch" aria-checked="false" data-act="push"><i></i></button><span>Make room for Bob (push the page over)</span></div>
+        <label for="widthRange">Sidebar width <span class="size-value" id="widthValue">320px</span></label><input class="size-range" id="widthRange" type="range" min="320" max="800" step="10" value="320"/><div class="size-controls"><button data-act="size" data-w="320">Compact</button><button data-act="size" data-w="440">Comfort</button><button data-act="size" data-w="600">Wide</button></div><label>Sidebar height <span class="size-value" id="heightValue">Full height</span></label><div class="size-controls"><button data-act="height" data-h="0">Full</button><button data-act="height" data-h="500">Medium</button><button data-act="height" data-h="700">Tall</button></div><div class="tg2"><button class="sw" id="swPush" role="switch" aria-checked="false" data-act="push"><i></i></button><span>Make room for Bob (push the page over)</span></div>
         <small>Free Nemotron models cost nothing, but OpenRouter still needs a free key. <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer">Get one here</a>. Free models may log what you send, so don't share anything private.</small>
       </div>
       <div class="ghost-tools" style="display:none"><button class="b" data-act="ghost">✨ Inspect page</button><button class="b" data-act="ghostprev" title="Previous teaching step">◀</button><button class="b" data-act="ghostnext" title="Next teaching step">▶</button><button class="b" data-act="ghostclear">✕ Clear spotlight</button><span id="ghostStatus" aria-live="polite">Select text or inspect visible code</span></div>
@@ -437,7 +446,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
     <button class="bubble m-idle" id="bubble" aria-label="Open Bob">${robot()}<span class="badge" id="badge" hidden></span></button>
   </div>`;
   const $ = (id) => root.getElementById(id);
-  const MINI = robot();
+  const MINI = robot(true);
 
   // ------------------------------------------------------------- mood + place
   let moodTimer;
@@ -481,6 +490,10 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
   function applyDock() {   // width of the sidebar, and (optionally) pushing the page over to make room
     const w = Math.min(Math.max(S.width, 320), Math.max(320, Math.round(innerWidth * 0.9)));
     $("panel").style.width = w + "px";
+    const h = S.height > 0 ? Math.min(Math.max(S.height, 340), innerHeight) : innerHeight;
+    $("panel").style.height = h + "px";
+    $("panel").style.bottom = "auto";
+    if ($("heightValue")) $("heightValue").textContent = S.height ? h + "px" : "Full height";
     if ($("widthValue")) $("widthValue").textContent = w + "px";
     if ($("widthRange")) $("widthRange").value = String(w);
     const de = document.documentElement;
@@ -822,6 +835,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
       case "newchat": newChat(); return;
       case "tab": S.tab = btn.dataset.tab; $("panel").dataset.tab = S.tab; S.lastHtml = ""; pulseEnter(); break;
       case "usepage": setPage(!S.usePage); return;
+      case "height": S.height = Number(btn.dataset.h) || 0; applyDock(); B.savePref("h", String(S.height)); return;
       case "size": S.width = Number(btn.dataset.w) || 320; applyDock(); B.savePref("w", String(S.width)); return;
       case "push": S.push = !S.push; $("swPush").classList.toggle("on", S.push); $("swPush").setAttribute("aria-checked", String(S.push)); B.savePref("push", S.push ? "1" : "0"); applyDock(); return;
       case "code": { const t = $("input"); t.value += (t.value && !t.value.endsWith("\n") ? "\n" : "") + "```\n\n```"; t.focus(); return; }
@@ -888,6 +902,33 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
   });
   grip.addEventListener("pointerup", () => { if (rz) B.savePref("w", String(S.width)); rz = null; });
 
+  function attachResizeGrip(id, resizeWidth, resizeHeight) {
+    const gripEl = $(id);
+    let start = null;
+    gripEl.addEventListener("pointerdown", e => {
+      if (e.button !== 0) return;
+      start = { x:e.clientX, y:e.clientY, w:S.width, h:S.height || innerHeight };
+      gripEl.setPointerCapture?.(e.pointerId);
+      e.preventDefault();
+    });
+    gripEl.addEventListener("pointermove", e => {
+      if (!start) return;
+      if (resizeWidth) S.width = Math.min(Math.max(start.w + start.x - e.clientX, 320), Math.max(320, Math.round(innerWidth*.9)));
+      if (resizeHeight) S.height = Math.min(Math.max(start.h + e.clientY - start.y, 340), innerHeight);
+      applyDock();
+    });
+    const finish = () => {
+      if (!start) return;
+      start = null;
+      B.savePref("w", String(S.width));
+      B.savePref("h", String(S.height));
+    };
+    gripEl.addEventListener("pointerup",finish);
+    gripEl.addEventListener("pointercancel",finish);
+    gripEl.addEventListener("lostpointercapture",finish);
+  }
+  attachResizeGrip("heightGrip", false, true);
+  attachResizeGrip("cornerGrip", true, true);
   $("widthRange").addEventListener("input", e => { S.width = Number(e.target.value) || 320; applyDock(); });
   $("widthRange").addEventListener("change", () => B.savePref("w", String(S.width)));
   // ------------------------------------------------------------------ start
