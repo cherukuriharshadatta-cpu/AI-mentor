@@ -644,6 +644,22 @@
       "It's like not keeping other people's diaries.",
       "List every piece of personal data my app collects, remove what I don't need, protect the rest with access rules and encryption, and add a way to delete a person's data."),
   ];
+  // Determine game connectivity from the person's own plan, not AI suggestions.
+  // "Unknown" does not imply hosting, accounts, or a backend.
+  function detectGameMode(userTexts) {
+    const messages = (userTexts || []).map(x => String(x)).filter(Boolean);
+    const explicitOffline = /\b(offline|single[ -]?player|solo|local[ -]?only|no multiplayer|no online|without (?:a )?server)\b/i;
+    const explicitOnline = /\b(online multiplayer|multiplayer|co[ -]?op|pvp|networked|online game|online leaderboard|cloud saves?|dedicated server|hosted backend)\b/i;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const text = messages[i];
+      const offline = explicitOffline.test(text);
+      const online = explicitOnline.test(text) && !/\b(no|without|not|avoid)\s+(?:online\s+)?multiplayer\b/i.test(text);
+      if (online && !offline) return "online";
+      if (offline && !online) return "offline";
+      if (online && offline) return "unknown";
+    }
+    return "unknown";
+  }
   const IMPLIED = { store: ["payments", "database", "login", "personal-data"], backend: ["database"] };
 
   // A solo/offline game is not automatically a hosted website.
@@ -701,6 +717,6 @@
   }
 
   return { RULES, NEEDS, TYPE_NEEDS, PROJECT_TYPES, SEV_ORDER, scanCode, checkedCount, maskSecret, maskLine,
-    reconcile, detectProject, buildPrompt, findingPrompt, needPrompt, planNeeds,
+    reconcile, detectProject, detectGameMode, buildPrompt, findingPrompt, needPrompt, planNeeds,
     FEATURES, FEATURE_LABEL, detectFeatures, ROADMAPS, CHECKS, buildChecklist, checkPrompt, safetyScore };
 });

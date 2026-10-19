@@ -39,7 +39,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
     key: "", level: "unknown", model: "auto", settingsOpen: false,
     // inspector
     ghostContext: "",
-    lastProjectAnnouncement: "", projectName: "",
+    lastProjectAnnouncement: "", projectName: "", gameMode: "unknown",
     // checkup
     consent: false, paused: false, scanned: false, open: false,
     learned: new Set(), dismissed: new Set(), projectType: null, guess: null, selGuess: null,
@@ -111,7 +111,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
     S.dismissed.clear(); S.opts.clear(); S.showAll = false; S.askChange = false; S.note = "";
     S.features = []; S.seenFeatures = new Set(); S.said = new Set(); S.annType = null; S.textHash = "";
     S.showList = false; S.showNeeds = false; S.done = new Set(S.doneAll[ROUTE_KEY()] || []);
-    S.lastProjectAnnouncement = ""; S.projectName = "";
+    S.lastProjectAnnouncement = ""; S.projectName = ""; S.gameMode = "unknown";
     S.reads = { users: 0, code: 0, text: false };
     hideToast();
   }
@@ -185,8 +185,19 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
     const key = hash(userTexts.join("\u0001") + "\u0002" + asstTexts.join("\u0001") + "\u0002" + pageText);
     if (key !== S.textHash) {
       S.textHash = key;
+      S.lastUserTexts = userTexts.slice();
       S.guess = userTexts.length ? E.detectProject(userTexts) : pageText ? E.detectProject([pageText]) : null;
-      S.features = E.detectFeatures([...userTexts, ...asstTexts, pageText]);
+      // For games, only user-confirmed capabilities may activate security checks.
+      // Assistant text often brainstorms optional features that are not in the plan.
+      const inferred = E.detectFeatures([...userTexts, ...asstTexts, pageText]);
+      if (currentType() === "game" && userTexts.length) {
+        const confirmed = E.detectFeatures(userTexts);
+        const mode = E.detectGameMode(userTexts);
+        const conditional = new Set(["multiplayer","login","database","payments","ai","keys","personal-data","user-content","email","uploads","admin"]);
+        S.features = inferred.filter(f => !conditional.has(f) || confirmed.includes(f));
+        if (mode !== "online") S.features = S.features.filter(f => f !== "multiplayer");
+        S.gameMode = mode;
+      } else { S.features = inferred; S.gameMode = "unknown"; }
       autoProjectIntroduction(userTexts, asstTexts);
     }
     S.scanned = true;
@@ -777,6 +788,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
     if (S.note) h += `<div class="note">${esc(S.note)}</div>`;
     h += `<p class="small muted">Checks are tailored to the detected project and features. They are guidance, not a guarantee that the project is secure.</p>`;
     h += projectView();
+    if (currentType() === "game") h += '<div class="card"><h3>How will your game run?</h3><p class="muted small">This changes the security checklist. An offline prototype does not need website or server checks.</p><div class="btns"><button class="b" data-act="gamemode" data-mode="offline">Offline / solo</button><button class="b" data-act="gamemode" data-mode="online">Online / multiplayer</button><button class="b" data-act="gamemode" data-mode="unknown">Not decided</button></div><p class="small muted">Current: ' + esc(S.gameMode || "unknown") + '</p></div>';
     h += gaugeView();
     const f = openFindings(), fs = S.showAll ? f : f.slice(0, 2);
     if (fs.length) h += `<p class="lbl">Spotted in your code</p>` + fs.map(findingCard).join("") + (f.length > fs.length ? `<button class="b" data-act="more">Show ${f.length - fs.length} more</button>` : "");
@@ -873,6 +885,16 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
       case "newchat": newChat(); return;
       case "tab": S.tab = btn.dataset.tab; $("panel").dataset.tab = S.tab; S.lastHtml = ""; pulseEnter(); break;
       case "usepage": setPage(!S.usePage); return;
+      case "gamemode": {
+        const mode = btn.dataset.mode;
+        if (!["offline","online","unknown"].includes(mode)) return;
+        S.gameMode = mode;
+        const confirmed = E.detectFeatures((S.lastUserTexts || []));
+        const base = E.detectFeatures(S.lastUserTexts || []);
+        S.features = base.filter(f => f !== "multiplayer" || mode === "online");
+        if (mode === "online") S.features.push("multiplayer");
+        S.lastHtml = ""; render(); return;
+      }
       case "height": S.height = Number(btn.dataset.h) || 0; applyDock(); B.savePref("h", String(S.height)); return;
       case "size": S.width = Number(btn.dataset.w) || 320; applyDock(); B.savePref("w", String(S.width)); return;
       case "push": S.push = !S.push; $("swPush").classList.toggle("on", S.push); $("swPush").setAttribute("aria-checked", String(S.push)); B.savePref("push", S.push ? "1" : "0"); applyDock(); return;

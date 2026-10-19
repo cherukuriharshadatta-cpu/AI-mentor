@@ -260,3 +260,8 @@ t("empty list is 0, not a crash", () => assert.strictEqual(E.safetyScore([], 0),
 
 console.log("\n" + pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);
+
+console.log("Game mode detection");
+t("offline prototype stays offline", () => assert.equal(E.detectGameMode(["Making an offline solo game"]), "offline"));
+t("multiplayer game is online", () => assert.equal(E.detectGameMode(["Building online multiplayer"]), "online"));
+t("undecided game is not assumed online", () => assert.equal(E.detectGameMode(["Making a pixel-art strategy game"]), "unknown"));
