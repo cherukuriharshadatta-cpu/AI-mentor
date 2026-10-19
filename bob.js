@@ -401,19 +401,20 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
     .size-range{width:100%;accent-color:#c2613d}
     .size-value{font-size:11px;color:var(--muted)}
     @media(max-width:480px){.bob-nav{flex-basis:42px!important;width:42px!important;min-width:42px}.panel header{padding:9px}.panel .view{padding:9px}}
+    .panel .rail[hidden],.panel .st[hidden],.panel .sync[hidden]{display:none!important}
   </style>
   <div class="wrap">
     <section class="panel" id="panel" data-tab="check" aria-label="Bob, your coding buddy">
       <div class="grip" id="grip" title="Drag to make Bob wider or narrower"></div><nav class="bob-nav" aria-label="Bob navigation"><div class="bob-nav-group"><button data-act="tab" data-tab="check" aria-label="Security mentor" title="Security mentor">🛡</button><button data-act="tab" data-tab="chat" aria-label="Ask Bob" title="Ask Bob">▤</button></div><div class="bob-nav-group"><button data-act="gear" aria-label="Settings" title="Settings">⚙</button><button data-act="push" aria-label="Toggle page space" title="Make room for Bob">⇄</button><button data-act="close" aria-label="Collapse Bob" title="Collapse Bob">»</button></div></nav><div class="panel-main">
       <header>
         <div class="logo m-idle" id="heroLogo">${robot()}</div>
-        <div class="ttl"><div class="name">Bob</div><div class="st"><i class="dot" id="stDot"></i><span id="st">Ready to help</span></div></div>
+        <div class="ttl"><div class="name">Bob</div><div class="st" hidden><i class="dot" id="stDot"></i><span id="st">Ready to help</span></div></div>
         <button class="ib" data-act="gear" aria-label="Settings" title="Settings">\u2699</button>
         <button class="ib" data-act="newchat" aria-label="New chat" title="New chat">\u21BB</button>
         <button class="ib" data-act="close" aria-label="Collapse" title="Collapse (Esc)">\u00BB</button>
       </header>
-      <div class="ctx"><span class="it">Context:</span><span class="chip"><i class="dot" id="ctxDot"></i><span id="host"></span></span><span class="sync" id="sync">OFF</span></div>
-      <div class="rail" id="rail"></div>
+      <div class="ctx"><span class="it">Context:</span><span class="chip"><i class="dot" id="ctxDot"></i><span id="host"></span></span><span class="sync" id="sync" hidden>OFF</span></div>
+      <div class="rail" id="rail" hidden></div>
       <div class="settings" id="settings">
         <label>OpenRouter API key (saved only inside this extension)</label>
         <input id="key" type="password" placeholder="sk-or-..." autocomplete="off"/>
@@ -429,7 +430,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
       <footer>
         <div class="tg"><button class="sw" id="sw" role="switch" aria-checked="false" data-act="usepage"><i></i></button><span>Teach from this page's content</span></div>
         <div class="inrow"><textarea id="input" rows="1" placeholder="Ask Bob anything\u2026"></textarea><button class="code" data-act="code" title="Add a code block">&lt;/&gt;</button><button class="send" id="send" data-act="send" aria-label="Send">\u2192</button></div>
-        <div class="foot"><span>Free Nemotron models via OpenRouter</span><span>Esc to collapse</span></div>
+        <div class="foot"><span>Esc to collapse</span></div>
       </footer>
     </div></section>
     <div class="toast" id="toast" hidden data-act="toastopen" role="status"><button class="tclose" data-act="toastclose" aria-label="Dismiss">\u2715</button><div class="tt" id="tt"></div><div class="ts2" id="ts2"></div></div>
