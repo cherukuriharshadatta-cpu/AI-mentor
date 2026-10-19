@@ -39,7 +39,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
     key: "", level: "unknown", model: "auto", settingsOpen: false,
     // inspector
     ghostContext: "",
-    lastProjectAnnouncement: "", projectName: "", gameMode: "unknown",
+    lastProjectAnnouncement: "", projectName: "", gameMode: "unknown", gameModeOverride: null,
     // checkup
     consent: false, paused: false, scanned: false, open: false,
     learned: new Set(), dismissed: new Set(), projectType: null, guess: null, selGuess: null,
@@ -111,7 +111,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
     S.dismissed.clear(); S.opts.clear(); S.showAll = false; S.askChange = false; S.note = "";
     S.features = []; S.seenFeatures = new Set(); S.said = new Set(); S.annType = null; S.textHash = "";
     S.showList = false; S.showNeeds = false; S.done = new Set(S.doneAll[ROUTE_KEY()] || []);
-    S.lastProjectAnnouncement = ""; S.projectName = ""; S.gameMode = "unknown";
+    S.lastProjectAnnouncement = ""; S.projectName = ""; S.gameMode = "unknown"; S.gameModeOverride = null;
     S.reads = { users: 0, code: 0, text: false };
     hideToast();
   }
@@ -192,7 +192,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
       const inferred = E.detectFeatures([...userTexts, ...asstTexts, pageText]);
       if (currentType() === "game" && userTexts.length) {
         const confirmed = E.detectFeatures(userTexts);
-        const mode = E.detectGameMode(userTexts);
+        const mode = S.gameModeOverride || E.detectGameMode(userTexts);
         const conditional = new Set(["multiplayer","login","database","payments","ai","keys","personal-data","user-content","email","uploads","admin"]);
         S.features = inferred.filter(f => !conditional.has(f) || confirmed.includes(f));
         if (mode !== "online") S.features = S.features.filter(f => f !== "multiplayer");
@@ -889,6 +889,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
         const mode = btn.dataset.mode;
         if (!["offline","online","unknown"].includes(mode)) return;
         S.gameMode = mode;
+        S.gameModeOverride = mode;
         const confirmed = E.detectFeatures((S.lastUserTexts || []));
         const base = E.detectFeatures(S.lastUserTexts || []);
         S.features = base.filter(f => f !== "multiplayer" || mode === "online");
