@@ -171,14 +171,22 @@ t("'for kids' is noticed", () => assert(E.detectFeatures(["a drawing app for kid
 console.log("Safety checklist is tailored");
 const idsOf = (type, feats) => E.buildChecklist(type, feats).map((c) => c.id);
 t("everyone gets the basics (HTTPS, hidden keys, backups...)", () => {
-  for (const type of ["website", "game", "mobile", "bot", "store", "backend", "unknown"])
+  for (const type of ["website", "mobile", "bot", "store", "backend", "unknown"])
     for (const id of ["https", "secrets-hidden", "env-ignored", "validate-input", "backups-test"]) assert(idsOf(type, []).includes(id), type + " missing " + id);
 });
 t("a website gets headers + trusted scripts, a game does not", () => {
   assert(idsOf("website", []).includes("security-headers") && idsOf("website", []).includes("trusted-scripts"));
   assert(!idsOf("game", []).includes("security-headers"));
 });
-t("a game gets 'keep scores on the server'", () => assert(idsOf("game", []).includes("server-truth")));
+t("solo game avoids unrelated online checks", () => {
+  const i = idsOf("game", []);
+  for (const id of ["https", "secrets-hidden", "env-ignored", "validate-input", "backups-test", "server-truth"]) assert(!i.includes(id), id);
+  assert(i.includes("updates") && i.includes("test-fake"));
+});
+t("multiplayer game gets network and score protections", () => {
+  const i = idsOf("game", ["multiplayer"]);
+  assert(i.includes("server-truth") && i.includes("https") && i.includes("validate-input"));
+});
 t("a phone app gets 'no keys inside the app'", () => assert(idsOf("mobile", []).includes("keys-in-app")));
 t("a bot gets token + command permission steps", () => { const i = idsOf("bot", []); assert(i.includes("bot-token") && i.includes("bot-permissions")); });
 t("a shop gets prices-on-server AND all payment steps (payments are implied)", () => {
