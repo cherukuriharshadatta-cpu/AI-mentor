@@ -1,0 +1,46 @@
+name: Import Bob extension source
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/import-bob.yml'
+permissions:
+  contents: write
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Extract uploaded Bob extension
+        shell: bash
+        run: |
+          set -euo pipefail
+          zip_file=$(find . -maxdepth 1 -type f -name 'bob-stitch-expressions-v2.1*.zip' -print -quit)
+          test -n "$zip_file" || { echo "Uploaded ZIP not found"; exit 1; }
+          mkdir -p /tmp/bob-import
+          unzip -q "$zip_file" -d /tmp/bob-import
+          test -f /tmp/bob-import/bob-ghost-extension/manifest.json
+          cp -a /tmp/bob-import/bob-ghost-extension/. .
+          git rm -- "$zip_file"
+      - name: Validate extension
+        run: |
+          node --check bob.js
+          node --check ghost.js
+          node tests/test_engine.js
+          node tests/test_bridge.js
+          node tests/smoke_intro.js
+          node tests/smoke.js
+          node tests/test_ghost.js
+      - name: Commit unpacked source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "Import Bob Ghost Tutor v2.1 extension source"
+            git push
+          fi
