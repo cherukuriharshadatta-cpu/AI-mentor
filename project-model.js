@@ -52,4 +52,5 @@
     }));
   }
   global.BobProjectModel={infer,plan,RULES};
+  if(typeof module!=="undefined" && module.exports) module.exports=global.BobProjectModel;
 })(typeof window!=="undefined"?window:globalThis);
