@@ -35,7 +35,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
   // ------------------------------------------------------------------ state
   const S = {
     // chat
-    tab: "chat", busy: false, mood: "idle", usePage: false, msgs: [],
+    tab: "check", busy: false, mood: "idle", usePage: false, msgs: [],
     key: "", level: "unknown", model: "auto", settingsOpen: false,
     // inspector
     ghostContext: "",
@@ -376,7 +376,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
     @media (max-width:480px){.panel{width:100vw!important}}
   </style>
   <div class="wrap">
-    <section class="panel" id="panel" data-tab="chat" aria-label="Bob, your coding buddy">
+    <section class="panel" id="panel" data-tab="check" aria-label="Bob, your coding buddy">
       <div class="grip" id="grip" title="Drag to make Bob wider or narrower"></div>
       <header>
         <div class="logo m-idle" id="heroLogo">${robot()}</div>
@@ -395,8 +395,8 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
         <div class="tg2"><button class="sw" id="swPush" role="switch" aria-checked="false" data-act="push"><i></i></button><span>Make room for Bob (push the page over)</span></div>
         <small>Free Nemotron models cost nothing, but OpenRouter still needs a free key. <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer">Get one here</a>. Free models may log what you send, so don't share anything private.</small>
       </div>
-      <div class="ghost-tools"><button class="b" data-act="ghost">✨ Inspect page</button><button class="b" data-act="ghostprev" title="Previous teaching step">◀</button><button class="b" data-act="ghostnext" title="Next teaching step">▶</button><button class="b" data-act="ghostclear">✕ Clear spotlight</button><span id="ghostStatus" aria-live="polite">Select text or inspect visible code</span></div>
-      <nav class="tabs"><button data-act="tab" data-tab="chat">Chat</button><button data-act="tab" data-tab="check">Checkup<span class="cnt" id="cnt" hidden></span></button></nav>
+      <div class="ghost-tools" style="display:none"><button class="b" data-act="ghost">✨ Inspect page</button><button class="b" data-act="ghostprev" title="Previous teaching step">◀</button><button class="b" data-act="ghostnext" title="Next teaching step">▶</button><button class="b" data-act="ghostclear">✕ Clear spotlight</button><span id="ghostStatus" aria-live="polite">Select text or inspect visible code</span></div>
+      <nav class="tabs"><button data-act="tab" data-tab="check">Security mentor<span class="cnt" id="cnt" hidden></span></button><button data-act="tab" data-tab="chat">Ask Bob</button></nav>
       <div class="view" id="chatView"><div id="msgs"></div><div class="chips" id="chips"></div></div>
       <div class="view" id="checkView"><div id="body"></div></div>
       <footer>
@@ -488,7 +488,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
     $("chips").innerHTML = list.map(([i, l, q], k) => `<button data-act="quick" data-i="${k}"><i>${i}</i>${esc(l)}</button>`).join("");
   }
   function greet() {
-    addMsg("assistant", "Hi! I'm Bob, your AI teacher. Ask me anything, or pick a quick start below to explore this page together.");
+    addMsg("assistant", "I can explain security recommendations for your project. The Security mentor tab watches the conversation only after you enable it.");
     setChips(QUICK);
   }
   function newChat() { S.msgs = []; $("msgs").innerHTML = ""; greet(); }
@@ -649,7 +649,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
   function checklistView() {
     const all = currentChecklist();
     const doneN = all.filter((c) => c.done).length, todo = all.filter((c) => !c.done);
-    const pct = Math.round((100 * doneN) / all.length);
+    const pct = all.length ? Math.round((100 * doneN) / all.length) : 0;
     let h = `<p class="lbl">Safety checklist \u00B7 ${doneN} of ${all.length} done</p><div class="bar"><i style="width:${pct}%"></i></div>`;
     if (!todo.length) h += `<p class="ok">You ticked every step. Nice work! Keep testing, and ask Bob again when you add new features.</p>`;
     h += todo.slice(0, 2).map(checkCard).join("");
@@ -694,6 +694,7 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
     if (S.scanned && S.reads.users + S.reads.code === 0 && !S.reads.text)
       h += `<div class="note">I can't read this chat yet. Highlight some text or code on the page and tap "Check what I highlighted".</div>`;
     if (S.note) h += `<div class="note">${esc(S.note)}</div>`;
+    h += `<p class="small muted">Checks are tailored to the detected project and features. They are guidance, not a guarantee that the project is secure.</p>`;
     h += projectView();
     h += gaugeView();
     const f = openFindings(), fs = S.showAll ? f : f.slice(0, 2);
