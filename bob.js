@@ -374,6 +374,33 @@ Commands the learner may type: /quiz <topic>, /hint, /summary, /explain-differen
     .opt{border-top:1px dashed var(--line);padding:8px 0;font-size:13px}.ok{color:var(--ok)}
     a{color:var(--acc)}
     @media (max-width:480px){.panel{width:100vw!important}}
+
+    /* Bob v2.4.1: real two-column Stitch layout */
+    .wrap{--bg:#141417;--bg2:#141416;--card:#18181b;--line:#27272a;--fg:#f4f4f5;--muted:#a1a1aa;--acc:#c2613d;--acc2:#c2613d}
+    .panel{display:flex!important;flex-direction:row!important;align-items:stretch!important;overflow:hidden;background:#141417;border-left:1px solid #27272a}
+    .panel-main{display:flex!important;flex:1 1 0!important;flex-direction:column!important;min-width:0;min-height:0;overflow:hidden}
+    .bob-nav{display:flex!important;flex:0 0 48px!important;width:48px!important;min-width:48px;flex-direction:column;align-items:center;justify-content:space-between;padding:14px 0;background:#101012;border-right:1px solid #27272a}
+    .bob-nav-group{display:flex;flex-direction:column;align-items:center;gap:10px}
+    .bob-nav button{height:34px;width:34px;border:1px solid transparent;border-radius:9px;background:transparent;color:#85858e;font-size:17px;cursor:pointer;position:relative}
+    .bob-nav button:hover,.bob-nav button:focus-visible{background:#222226;color:#fafafa}
+    .panel[data-tab=check] .bob-nav button[data-tab=check],.panel[data-tab=chat] .bob-nav button[data-tab=chat]{background:#222226;color:#e48358;border-color:#3f3f46}
+    .panel[data-tab=check] .bob-nav button[data-tab=check]::before,.panel[data-tab=chat] .bob-nav button[data-tab=chat]::before{content:"";position:absolute;left:-7px;top:8px;width:2px;height:16px;background:#c2613d;border-radius:3px}
+    .panel .tabs{display:none!important}
+    .panel header{padding:12px;gap:8px;flex-shrink:0}
+    .panel .logo{width:36px;height:36px}
+    .panel .name{font-size:17px}
+    .panel .st{font-size:11px}
+    .panel .ctx{padding:8px 12px;flex-shrink:0}
+    .panel .rail{flex-shrink:0}
+    .panel .view{padding:12px;min-width:0}
+    .panel footer{padding:10px;flex-shrink:0}
+    .panel .foot{font-size:10px}
+    .size-controls{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px}
+    .size-controls button{flex:1;padding:7px 5px;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:9px;cursor:pointer;font-size:11px}
+    .size-controls button:hover{border-color:var(--acc)}
+    .size-range{width:100%;accent-color:#c2613d}
+    .size-value{font-size:11px;color:var(--muted)}
+    @media(max-width:480px){.bob-nav{flex-basis:42px!important;width:42px!important;min-width:42px}.panel header{padding:9px}.panel .view{padding:9px}}
   </style>
   <div class="wrap">
     <section class="panel" id="panel" data-tab="check" aria-label="Bob, your coding buddy">
