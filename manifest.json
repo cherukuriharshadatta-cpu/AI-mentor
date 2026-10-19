@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Bob Ghost Tutor — Live Web Inspector",
-  "version": "3.0.3",
-  "description": "Bob Security Mentor with Stitch-inspired compact navigation and adjustable sidebar.",
+  "version": "3.0.4",
+  "description": "Bob Project Mentor: consent-based, contextual project guidance and release-readiness planning.",
   "permissions": [
     "storage"
   ],
