@@ -1,0 +1,34 @@
+name: Bob extension checks
+on:
+  push:
+    branches: [main]
+    paths:
+      - '*.js'
+      - 'manifest.json'
+      - 'tests/**'
+      - '.github/workflows/bob-checks.yml'
+  pull_request:
+    paths:
+      - '*.js'
+      - 'manifest.json'
+      - 'tests/**'
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript syntax checks
+        run: |
+          for f in background.js bridge.js bob.js engine.js ghost.js shield.js; do node --check "$f"; done
+      - name: Run extension tests
+        run: |
+          node tests/test_engine.js
+          node tests/test_bridge.js
+          node tests/smoke_intro.js
+          node tests/smoke.js
+          node tests/test_ghost.js
