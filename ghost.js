@@ -59,11 +59,52 @@
     const bend=(x1+x2)/2;
     beam.setAttribute('d',`M ${x1} ${y1} C ${bend} ${y1}, ${bend} ${y2}, ${x2} ${y2}`);
   }
-  function inspect(){const p=pick();if(!p)return null; mount();target=p.el;snippet=p.text.slice(0,5000);active=true;update();return snippet;}
-  function clear(){active=false;target=null;snippet='';if(layer){layer.remove();layer=null;}}
+  function inspect(){const p=pick();if(!p)return null; lesson=[];stepIndex=-1;mount();label && (label.textContent='Ghost Tutor · inspecting');target=p.el;snippet=p.text.slice(0,5000);active=true;update();return snippet;}
+  function clear(){lesson=[];stepIndex=-1;active=false;target=null;snippet='';if(layer){layer.remove();layer=null;}}
   const updatePassive=()=>{if(active)update();};
   window.addEventListener('scroll',updatePassive,true);
   window.addEventListener('resize',updatePassive);
   document.addEventListener('visibilitychange',updatePassive);
-  window.BobGhost={inspect,clear,update, getContext:()=>active?snippet:'', isActive:()=>active};
+
+  // Guided lessons reference short literal page quotes. Model output is untrusted:
+  // no arbitrary selectors, scripts, page edits, or navigation are accepted.
+  let lesson=[], stepIndex=-1;
+  const normalize=t=>String(t||'').replace(/\s+/g,' ').trim();
+  function candidates(){
+    const nodes=document.querySelectorAll('pre,code,p,li,h1,h2,h3,article,section,[data-testid*="code"]');
+    return [...nodes].slice(0,900).filter(eligible).filter(el=>{
+      const t=normalize(el.textContent);return t.length>=8&&t.length<=15000;
+    });
+  }
+  function findQuote(q){
+    const needle=normalize(q).slice(0,220);
+    if(needle.length<5)return null;
+    const nodes=candidates();
+    return nodes.find(el=>normalize(el.textContent)===needle) ||
+      nodes.filter(el=>normalize(el.textContent).includes(needle))
+        .sort((a,b)=>normalize(a.textContent).length-normalize(b.textContent).length)[0] || null;
+  }
+  function showStep(n){
+    if(!lesson.length)return false;
+    stepIndex=Math.max(0,Math.min(lesson.length-1,n));
+    const s=lesson[stepIndex], el=findQuote(s.quote);
+    if(!el){label && (label.textContent='Step '+(stepIndex+1)+' · target not found');return false;}
+    mount();target=el;snippet=s.quote;active=true;
+    label.textContent='Step '+(stepIndex+1)+'/'+lesson.length+' · '+s.title;
+    try{el.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'center'});}catch(e){}
+    update();return true;
+  }
+  function startSteps(steps){
+    if(!Array.isArray(steps))return false;
+    lesson=steps.slice(0,6).map(s=>({
+      quote:normalize(s?.quote).slice(0,220),
+      title:normalize(s?.title).slice(0,70),
+      explain:normalize(s?.explain).slice(0,450)
+    })).filter(s=>s.quote.length>=5&&s.title.length>0&&findQuote(s.quote));
+    stepIndex=-1;
+    return lesson.length?showStep(0):false;
+  }
+  function step(delta){return showStep(stepIndex+delta);}
+  function getStep(){return stepIndex>=0?{index:stepIndex,total:lesson.length,...lesson[stepIndex]}:null;}
+  window.BobGhost={inspect,clear,update,startSteps,step,getStep, getContext:()=>active?snippet:'', isActive:()=>active};
 })();

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Bob Ghost Tutor \u2014 Live Web Inspector",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "AI tutor with contextual code spotlight, Ghost beam, OpenRouter chat, and optional safety checkup.",
   "permissions": [
     "storage"
