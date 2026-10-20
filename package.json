@@ -1,0 +1,14 @@
+{
+  "name": "bob-project-mentor",
+  "version": "3.1.0",
+  "private": true,
+  "description": "Consent-based project-completion mentoring browser extension",
+  "scripts": {
+    "test": "node tests/run.cjs",
+    "test:browser": "node tests/browser.cjs",
+    "test:extension": "node tests/extension.cjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1"
+  }
+}

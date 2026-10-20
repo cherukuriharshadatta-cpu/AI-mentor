@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Bob Ghost Tutor — Live Web Inspector",
-  "version": "3.0.5",
-  "description": "Bob Project Mentor: consent-based, contextual project guidance and release-readiness planning.",
+  "name": "Bob \u2014 Universal AI Project Mentor",
+  "version": "3.1.0",
+  "description": "A consent-based project mentor: understand, plan, verify, release and maintain your actual product.",
   "permissions": [
     "storage"
   ],
@@ -37,10 +37,16 @@
         "https://gist.github.com/*"
       ],
       "js": [
+        "privacy.js",
         "engine.js",
         "bridge.js",
-        "ghost.js",
+        "conversation.js",
         "project-model.js",
+        "readiness-planner.js",
+        "requirements.js",
+        "verification.js",
+        "project-store.js",
+        "model-reasoner.js",
         "bob.js"
       ],
       "run_at": "document_idle"

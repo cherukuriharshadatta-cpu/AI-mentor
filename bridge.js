@@ -7,19 +7,22 @@
   const alive = () => { try { return !!(chrome && chrome.runtime && chrome.runtime.id); } catch (e) { return false; } };
   const safe = (fn, fallback) => async (...a) => { try { return alive() ? await fn(...a) : fallback; } catch (e) { return fallback; } };
   const staleStream = () => (async function* () { throw Object.assign(new Error(STALE), { fatal: true }); })();
-  const PREF_KEYS = ["key", "level", "model", "pos", "w", "push"];
+  const PREF_KEYS = ["key", "level", "model", "pos", "w", "h", "push", "customModel"];
 
   window.BobBridge = {
     alive,
     loadPrefs: safe(() => chrome.storage.local.get(PREF_KEYS), {}),
     savePref: safe((k, v) => chrome.storage.local.set({ [k]: v }), null),
     clearPrefs: safe(() => chrome.storage.local.remove(PREF_KEYS), null),
-    stream: function ({ models, messages, key }) {
+    stream: function ({ models, messages, key, responseFormat, signal }) {
       if (!alive()) return staleStream();
       let port;
       try { port = chrome.runtime.connect({ name: "bob" }); } catch (e) { return staleStream(); }
       const queue = [];
       let wake = null, finished = false, error = null;
+      const abort = () => { error = { message: "Request cancelled." }; finished = true; try { port.disconnect(); } catch {} poke(); };
+      const deadline = setTimeout(abort, 150000);
+      if (signal) signal.addEventListener("abort", abort, { once: true });
       const poke = () => { if (wake) { wake(); wake = null; } };
       port.onMessage.addListener((m) => {
         if (m.chunk) queue.push(m.chunk);
@@ -27,8 +30,8 @@
         else if (m.done) finished = true;
         poke();
       });
-      port.onDisconnect.addListener(() => { finished = true; poke(); });
-      try { port.postMessage({ models, messages, key }); } catch (e) { return staleStream(); }
+      port.onDisconnect.addListener(() => { if (!finished) error = { message: "Connection closed before the answer finished. Please retry." }; finished = true; poke(); });
+      try { port.postMessage({ models, messages, key, responseFormat }); } catch (e) { return staleStream(); }
       return (async function* () {
         try {
           while (true) {
@@ -37,7 +40,7 @@
             await new Promise((r) => (wake = r));
           }
           if (error) throw Object.assign(new Error(error.message), { fatal: error.fatal });
-        } finally { try { port.disconnect(); } catch (e) {} }
+        } finally { clearTimeout(deadline); if (signal) signal.removeEventListener("abort", abort); try { port.disconnect(); } catch (e) {} }
       })();
     },
   };

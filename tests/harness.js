@@ -4,7 +4,7 @@ const BASE = fs.existsSync(path.join(__dirname, "bob.js")) ? __dirname : path.jo
 
 module.exports = function setup({ stored = {}, page = {}, prefs = {}, config = {} } = {}) {
   const mkEl = () => {
-    const el = { style: {}, dataset: {}, children: [], className: "", _html: "", value: "", scrollTop: 0, parentNode: { scrollTop: 0 },
+    const el = { style: {}, dataset: {}, children: [], className: "", _html: "", value: "", scrollTop: 0, parentNode: { scrollTop: 0, scrollHeight: 500, clientHeight: 500 },
       classList: { _s: new Set(), toggle(c, on) { on === false || (on === undefined && this._s.has(c)) ? this._s.delete(c) : this._s.add(c); }, add(c) { this._s.add(c); }, remove(c) { this._s.delete(c); } },
       appendChild(c) { this.children.push(c); }, setAttribute() {}, addEventListener(t, f) { (this.h = this.h || {})[t] = f; },
       querySelector() { return this._q || (this._q = { innerHTML: "" }); }, setPointerCapture() {}, focus() {}, remove() {}, select() {} };
@@ -17,6 +17,7 @@ module.exports = function setup({ stored = {}, page = {}, prefs = {}, config = {
   let first = true;
   const PAGE = Object.assign({ user: [], asst: [], pre: [], text: "" }, page);
   const main = {
+    querySelector() { return PAGE.streaming ? {} : null; },
     querySelectorAll(sel) {
       if (sel === "pre") return PAGE.pre.map((t) => ({ textContent: t }));
       if (sel === '[data-message-author-role="user"]') return PAGE.user.map((t) => ({ textContent: t }));
@@ -30,6 +31,7 @@ module.exports = function setup({ stored = {}, page = {}, prefs = {}, config = {
   const calls = [];
   const g = global;
   g.window = g; g.BobConfig = config;
+  for (const file of ['privacy','conversation','project-model','readiness-planner','requirements','verification','project-store','model-reasoner']) require(path.join(BASE,file+'.js'));
   g.BobEngine = require(path.join(BASE, "engine.js"));
   g.location = { origin: "https://chat.test", pathname: "/c/1", hostname: "chat.test" };
   g.innerWidth = 1200; g.innerHeight = 800; g.addEventListener = () => {};
@@ -37,7 +39,7 @@ module.exports = function setup({ stored = {}, page = {}, prefs = {}, config = {
   g.chrome = { storage: { local: {
     get: async () => JSON.parse(JSON.stringify(st)),
     set: async (o) => { Object.assign(st, o); },
-    remove: async (k) => { delete st[k]; } } } };
+    remove: async (k) => { for(const key of Array.isArray(k)?k:[k])delete st[key]; } } } };
   g.__stale = false;
   g.document.documentElement = { style: {} };
   g.BobBridge = {

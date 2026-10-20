@@ -1,17 +1,8 @@
-name: Bob extension checks
+name: Bob project mentor checks
 on:
   push:
     branches: [main]
-    paths:
-      - '*.js'
-      - 'manifest.json'
-      - 'tests/**'
-      - '.github/workflows/bob-checks.yml'
   pull_request:
-    paths:
-      - '*.js'
-      - 'manifest.json'
-      - 'tests/**'
 permissions:
   contents: read
 jobs:
@@ -22,16 +13,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: JavaScript syntax checks
-        run: |
-          for f in background.js bridge.js bob.js engine.js ghost.js shield.js project-model.js; do node --check "$f"; done
-      - name: Run extension tests
-        run: |
-          node tests/test_engine.js
-          node tests/test_bridge.js
-          node tests/smoke_intro.js
-          node tests/test_ghost.js
-          node tests/test_project_model.js
-      - name: Legacy v2 smoke compatibility (known obsolete expectations)
-        continue-on-error: true
-        run: node tests/smoke.js
+          cache: npm
+      - run: npm ci
+      - name: Syntax, manifest, reasoning and extension regression tests
+        run: npm test
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+      - name: Browser integration and layout tests
+        run: npm run test:browser
+      - name: Actual MV3 extension loading and refresh
+        run: npm run test:extension
