@@ -35,7 +35,7 @@ module.exports = function setup({ stored = {}, page = {}, prefs = {}, config = {
   g.BobEngine = require(path.join(BASE, "engine.js"));
   g.location = { origin: "https://chat.test", pathname: "/c/1", hostname: "chat.test" };
   g.innerWidth = 1200; g.innerHeight = 800; g.addEventListener = () => {};
-  g.document = { createElement: () => { if (first) { first = false; return hostEl; } return mkEl(); }, body: { appendChild() {}, innerText: "" }, querySelector: (s) => (s === "main" ? main : null) };
+  g.document = { createElement: () => { if (first) { first = false; return hostEl; } return mkEl(); }, body: Object.assign({}, main, { appendChild() {} }), querySelector: (s) => (s === "main" ? main : null) };
   g.chrome = { storage: { local: {
     get: async () => JSON.parse(JSON.stringify(st)),
     set: async (o) => { Object.assign(st, o); },

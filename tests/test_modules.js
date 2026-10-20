@@ -9,6 +9,14 @@ const {Reader}=require('../conversation'),{Store}=require('../project-store');
  options.paused=false;const first=reader.read(container,options);assert(first.changed);assert.equal(reader.totalParsed,1);
  assert(!reader.read(container,options).changed);assert.equal(reader.totalParsed,1);
  node.textContent+=' Add payments.';assert(reader.read(container,options).changed);assert.equal(reader.totalParsed,2);
+ // A site can mix old and new message wrappers in the same conversation.
+ const nested={textContent:'Add accounts.',contains:()=>false};
+ const wrapper={textContent:'Add accounts.',contains:n=>n===nested};
+ const other={textContent:'Add uploads.',contains:()=>false};
+ const mixed={querySelector:()=>null,querySelectorAll:s=>s==='old'?[nested]:[wrapper,other]};
+ const mixedResult=new Reader().read(mixed,{...options,userSelectors:['old','new']});
+ assert.equal(mixedResult.messages.length,2);
+ assert.equal(new Set(mixedResult.messages.map(m=>m.id)).size,2);
  const streaming={...container,querySelector:()=>({})};assert(reader.read(streaming,options).streaming);
  const data={};const storage={get:async k=>k===null?data:{[k]:data[k]},set:async x=>Object.assign(data,x),remove:async keys=>keys.forEach(k=>delete data[k])};const store=new Store(storage);
  await store.save('/a',{identity:{description:{value:'website'}}},{tests:{state:'reported-complete'}},'a');

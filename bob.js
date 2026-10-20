@@ -14,8 +14,8 @@
   const cfg = Object.assign({
     models: ["nvidia/nemotron-3-nano-30b-a3b:free", "nvidia/nemotron-nano-9b-v2:free", "openrouter/free"],
     // Best-guess labels for "my message" blocks. Sites change them, so they can be overridden.
-    userSelectors: ['[data-message-author-role="user"]', '[data-testid="user-message"]', "user-query"],
-    assistantSelectors: ['[data-message-author-role="assistant"]', '[data-testid="assistant-message"]', "model-response"],
+    userSelectors: ['[data-message-author-role="user"]', '[data-testid="user-message"]', '[data-turn="user"]', '[data-testid="user-message-content"]', "user-query"],
+    assistantSelectors: ['[data-message-author-role="assistant"]', '[data-testid="assistant-message"]', '[data-turn="assistant"]', '.font-claude-message', "model-response"],
     toastGapMs: 8000,   // never pop up more often than this
   }, window.BobConfig || {});
   const HOST_ID = "bob-host", ORIGIN = location.origin;
@@ -114,7 +114,7 @@ If something is uncertain, ask one relevant clarifying question. Do not automati
   // ------------------------------------------------- reading the page (Checkup)
   const cache = new WeakMap();
   let mo = null, lastRoot = null, timer = null, lastRun = 0;
-  const getRoot = () => document.querySelector("main") || document.body;
+  const getRoot = () => document.body; // Stable across SPA conversation mounts; Reader only reads message nodes.
   function resetChat() {
     S.requestController?.abort(); S.routeEpoch++; reader.clear();
     S.project = null; S.normalized = []; S.remote = null; S.remotePreview = null; S.restored = false;
@@ -203,10 +203,11 @@ If something is uncertain, ask one relevant clarifying question. Do not automati
     const r = getRoot();
     if (r !== lastRoot) observe(r);
     const snapshot = reader.read(r, { enabled: S.consent, paused: S.paused, route: ROUTE_KEY(), userSelectors: cfg.userSelectors, assistantSelectors: cfg.assistantSelectors });
-    if (snapshot.streaming) { schedule(); return; }
+    if (snapshot.streaming) { S.via = "Waiting for response"; render(); schedule(); return; }
+    S.via = snapshot.messages.length ? "Reading conversation" : "Waiting for messages";
     S.reads = { users: snapshot.messages.filter(m => m.role === "user").length, code: 0, text: false };
     S.scanned = true;
-    if (!snapshot.messages.length) { S.note = "I cannot identify a supported conversation here yet. Paste a project description into Bob, or open a ChatGPT, Claude or Gemini conversation. GitHub pages require an explicitly pasted description; Bob does not read a repository automatically."; render(); return; }
+    if (!snapshot.messages.length) { S.note = "No conversation messages detected yet. Bob will retry automatically as this page loads. On GitHub, describe your project in Bob; repository contents are not read automatically."; render(); return; }
     if (!snapshot.changed && S.project && S.lastBriefSignature) { render(); return; }
     S.note = ""; S.normalized = snapshot.messages;
     S.project = window.BobProjectModel.build(S.normalized, S.project);
@@ -239,7 +240,7 @@ If something is uncertain, ask one relevant clarifying question. Do not automati
     const wait = Math.max(1500, 2000 - (Date.now() - lastRun)); // 1.5s quiet = AI finished typing
     timer = setTimeout(() => idle(() => { lastRun = Date.now(); scan(); }), wait);
   }
-  function observe(r) { if (mo) mo.disconnect(); lastRoot = r; mo = new MutationObserver(schedule); mo.observe(r, { childList: true, subtree: true, characterData: true }); }
+  function observe(r) { if (mo) mo.disconnect(); lastRoot = r; mo = new MutationObserver(schedule); mo.observe(r, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["data-message-author-role", "data-turn", "data-testid", "data-is-streaming", "aria-label"] }); }
   function stopReading() { if (mo) { mo.disconnect(); mo = null; } clearTimeout(timer); lastRoot = null; }
   function startReading() { if (!S.consent || S.paused) return; S.scanned = false; observe(getRoot()); setTimeout(() => idle(() => { lastRun = Date.now(); scan(); }), 300); }
 
@@ -741,7 +742,7 @@ If something is uncertain, ask one relevant clarifying question. Do not automati
   }
   function render() {
     chrome_();
-    $("monitorBar").innerHTML = !B.alive() ? '<p>Bob was updated. Refresh this page.</p>' : '<span>Local analysis · '+(!S.consent?'Off':S.paused?'Paused':'Watching')+'</span> <button class="b" data-act="'+(!S.consent?'enable':S.paused?'resume':'pause')+'">'+(!S.consent?'Enable monitoring':S.paused?'Resume':'Pause')+'</button>'+(S.consent?' <button class="b" data-act="disable">Disable</button>':'');
+    $("monitorBar").innerHTML = !B.alive() ? '<p>Bob was updated. Refresh this page.</p>' : '<span>Local analysis · '+(!S.consent?'Off':S.paused?'Paused':S.via||'Waiting for messages')+'</span> <button class="b" data-act="'+(!S.consent?'enable':S.paused?'resume':'pause')+'">'+(!S.consent?'Enable monitoring':S.paused?'Resume':'Pause')+'</button>'+(S.consent?' <button class="b" data-act="disable">Disable</button>':'');
     if (!S.open || S.tab !== "check") return;
     const html = checkView();
     if (html === S.lastHtml) return;

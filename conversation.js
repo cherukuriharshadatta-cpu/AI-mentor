@@ -9,22 +9,23 @@
       const streaming = !!container.querySelector?.('[data-is-streaming="true"], [data-testid="stop-button"], button[aria-label="Stop generating"], button[aria-label="Stop response"], .result-streaming');
       if (streaming) return { messages: [], changed: false, streaming: true };
       const records = [];
+      const seen = new Set();
       for (const [role, selectors] of [['user', userSelectors], ['assistant', assistantSelectors]]) {
         for (const selector of selectors) {
-          const nodes = [...container.querySelectorAll(selector)];
+          const nodes = [...container.querySelectorAll(selector)].filter(node => !seen.has(node) && !records.some(item => node.contains?.(item.node) || item.node.contains?.(node)));
           if (!nodes.length) continue;
           nodes.slice(-80).forEach((node, index) => {
+            seen.add(node);
             const text = String(node.textContent || '').slice(-16000).trim();
             const old = this.cache.get(node);
             let record = old?.text === text ? old : null;
             if (!record) {
-              record = { id: node.getAttribute?.('data-message-id') || role + ':' + index,
+              record = { id: node.getAttribute?.('data-message-id') || node.id || old?.id || role + ':' + this.totalParsed,
                 role, text, code: [...(node.querySelectorAll?.("pre") || [])].slice(0,10).map(p=>String(p.textContent||"").slice(0,50000)), timestamp: new Date().toISOString() };
               this.cache.set(node, record); this.totalParsed++;
             }
             if (text) records.push({ node, record });
           });
-          break;
         }
       }
       records.sort((a,b) => {

@@ -54,6 +54,24 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  await host.locator('[data-act=reviewpreview]').click();assert.equal(await page.evaluate(()=>window.__network.length),0);
  await host.locator('[data-act=gear]').click(); await host.locator('#key').fill('fake-test-key'); await host.locator('[data-act=gear]').click();
  await host.locator('[data-act=reviewsend]').click();await page.waitForTimeout(100);assert((await host.locator('#msgs').innerText()).includes('invalid JSON'));assert.equal(await page.evaluate(()=>window.__network.length),1);
+ // Multiple main elements, replacement roots and mixed message layouts.
+ await page.evaluate(()=>{
+   document.querySelector('main').remove();
+   document.body.insertAdjacentHTML('afterbegin','<main aria-label="Sidebar">Unrelated navigation</main><main id="conversation"><article data-turn="user">Build a website with accounts and file uploads.</article><article data-turn="assistant">I will implement that.</article></main>');
+ });
+ await page.waitForTimeout(2300);
+ assert((await host.locator('#monitorBar').innerText()).includes('Reading conversation'));
+ assert((await host.locator('#msgs').innerText()).includes('Validate submitted files'));
+ await page.evaluate(()=>{
+   const root=document.querySelector('#conversation');
+   root.insertAdjacentHTML('beforeend','<article data-turn="user"><div data-message-author-role="user">Add multiplayer.</div></article>');
+   const reader=new window.BobConversation.Reader();
+   const result=reader.read(document.body,{enabled:true,route:'test',userSelectors:['[data-message-author-role="user"]','[data-turn="user"]'],assistantSelectors:['[data-turn="assistant"]']});
+   if(result.messages.length!==3)throw Error('Mixed selectors lost or duplicated messages');
+ });
+ await page.evaluate(()=>document.querySelector('#conversation').remove());
+ await page.waitForTimeout(2300);
+ assert((await host.locator('#monitorBar').innerText()).includes('Waiting for messages'));
  // Route isolation and empty page must not retain old chat guidance.
  await page.evaluate(()=>{history.pushState({},'', '/c/new');document.querySelector('main').innerHTML='<div data-message-author-role="user">Create a static portfolio website.</div>';});
  await page.waitForTimeout(2300);assert(!(await host.locator('#msgs').innerText()).includes('payments'));
