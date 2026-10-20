@@ -62,6 +62,18 @@
         const parentTurn = wrapper || node.closest?.(TURN_SELECTOR);
         const identity = parentTurn || node;
         if (seen.has(identity)) return;
+        // Multiple selectors can match a message and its parent wrapper.
+        // Prefer the outer labelled message, never count both copies.
+        for (let i = entries.length - 1; i >= 0; i--) {
+          const existing = entries[i];
+          if (existing.role !== role) continue;
+          const outer = existing.wrapper || existing.node;
+          if (outer.contains?.(identity)) return;
+          if (identity.contains?.(outer)) {
+            seen.delete(outer);
+            entries.splice(i, 1);
+          }
+        }
         seen.add(identity);
         entries.push({ node, role, wrapper: parentTurn });
       };
