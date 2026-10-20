@@ -1,44 +1,123 @@
-/* Consent-gated DOM adapter. Only reads recognised messages, never whole-page text. */
+/* Consent-gated conversation reader. Never scans arbitrary page prose. */
 (function (root) {
   'use strict';
+
+  // These are role-bearing message nodes or explicit conversation-turn wrappers.
+  // Page navigation, prompt composers and Bob's own shadow root are not messages.
+  const TURN_SELECTOR = '[data-testid^="conversation-turn-"], [data-turn-id]';
+  const STREAMING_SELECTOR = '[data-is-streaming="true"], [data-testid="stop-button"], button[aria-label="Stop generating"], button[aria-label="Stop response"], .result-streaming';
+  const ROLE_SELECTOR = '[data-message-author-role], [data-testid="user-message"], [data-testid="assistant-message"], user-query, model-response, [data-turn-role]';
+
+  function roleOf(node) {
+    const attr = (node.getAttribute?.('data-message-author-role') || node.getAttribute?.('data-turn-role') || '').toLowerCase();
+    if (attr === 'user' || attr === 'human') return 'user';
+    if (attr === 'assistant' || attr === 'model') return 'assistant';
+    const testId = node.getAttribute?.('data-testid') || '';
+    if (testId === 'user-message' || node.localName === 'user-query') return 'user';
+    if (testId === 'assistant-message' || node.localName === 'model-response') return 'assistant';
+    return null;
+  }
+
+  function labelledTurnRole(turn) {
+    const direct = roleOf(turn);
+    if (direct) return direct;
+    const nested = turn.querySelector?.(ROLE_SELECTOR);
+    if (nested && roleOf(nested)) return roleOf(nested);
+    const heading = turn.querySelector?.('h5.sr-only, h6.sr-only, [data-testid="conversation-turn-label"]');
+    const label = String(heading?.textContent || '').trim().toLowerCase();
+    if (/^(you said|user said|you):?$/.test(label)) return 'user';
+    if (/^(chatgpt said|assistant said|claude said|gemini said|assistant):?$/.test(label)) return 'assistant';
+    return null; // Never infer roles from arbitrary page content.
+  }
+
+  function messageContent(node, role) {
+    // Take only message content when a labelled turn contains UI actions.
+    const selectors = role === 'user'
+      ? ['[data-testid="user-message"]', '[data-message-author-role="user"]', '.whitespace-pre-wrap', 'user-query']
+      : ['[data-testid="assistant-message"]', '[data-message-author-role="assistant"]', 'model-response', '.markdown', '.prose'];
+    for (const selector of selectors) {
+      const element = node.querySelector?.(selector);
+      if (element && String(element.textContent || '').trim()) return element;
+    }
+    return node;
+  }
+
+  function isInsideBob(node) {
+    return !!node.closest?.('#bob-host');
+  }
+
   class Reader {
     constructor() { this.cache = new WeakMap(); this.version = ''; this.route = ''; this.totalParsed = 0; }
-    read(container, { enabled, paused, route, userSelectors, assistantSelectors }) {
+
+    read(container, { enabled, paused, route, userSelectors = [], assistantSelectors = [] }) {
       if (!enabled || paused) return { messages: [], changed: false, blocked: true, streaming: false };
       if (this.route !== route) { this.cache = new WeakMap(); this.version = ''; this.route = route; }
-      const streaming = !!container.querySelector?.('[data-is-streaming="true"], [data-testid="stop-button"], button[aria-label="Stop generating"], button[aria-label="Stop response"], .result-streaming');
+      const streaming = !!container.querySelector?.(STREAMING_SELECTOR);
       if (streaming) return { messages: [], changed: false, streaming: true };
-      const records = [];
+
+      const entries = [];
       const seen = new Set();
-      for (const [role, selectors] of [['user', userSelectors], ['assistant', assistantSelectors]]) {
-        for (const selector of selectors) {
-          const nodes = [...container.querySelectorAll(selector)].filter(node => !seen.has(node) && !records.some(item => node.contains?.(item.node) || item.node.contains?.(node)));
-          if (!nodes.length) continue;
-          nodes.slice(-80).forEach((node, index) => {
-            seen.add(node);
-            const text = String(node.textContent || '').slice(-16000).trim();
-            const old = this.cache.get(node);
-            let record = old?.text === text ? old : null;
-            if (!record) {
-              record = { id: node.getAttribute?.('data-message-id') || node.id || old?.id || role + ':' + this.totalParsed,
-                role, text, code: [...(node.querySelectorAll?.("pre") || [])].slice(0,10).map(p=>String(p.textContent||"").slice(0,50000)), timestamp: new Date().toISOString() };
-              this.cache.set(node, record); this.totalParsed++;
-            }
-            if (text) records.push({ node, record });
-          });
+      const add = (node, role, wrapper = null) => {
+        if (!node || !role || isInsideBob(node)) return;
+        const parentTurn = wrapper || node.closest?.(TURN_SELECTOR);
+        const identity = parentTurn || node;
+        if (seen.has(identity)) return;
+        seen.add(identity);
+        entries.push({ node, role, wrapper: parentTurn });
+      };
+
+      // Explicit turn containers survive ChatGPT's changing inner message markup.
+      for (const turn of [...container.querySelectorAll(TURN_SELECTOR)].slice(-180)) {
+        if (turn.parentElement?.closest(TURN_SELECTOR)) continue;
+        const role = labelledTurnRole(turn);
+        if (role) add(turn, role, turn);
+      }
+
+      // Older ChatGPT, Claude, Gemini and custom supported role adapters.
+      for (const [role, selectors] of [
+        ['user', [...userSelectors, '[data-message-author-role="user"]', '[data-testid="user-message"]', 'user-query']],
+        ['assistant', [...assistantSelectors, '[data-message-author-role="assistant"]', '[data-testid="assistant-message"]', 'model-response']]
+      ]) {
+        for (const selector of new Set(selectors)) {
+          let nodes;
+          try { nodes = container.querySelectorAll(selector); } catch { continue; }
+          for (const node of [...nodes].slice(-80)) {
+            if (node.closest?.(TURN_SELECTOR) && seen.has(node.closest(TURN_SELECTOR))) continue;
+            add(node, role);
+          }
         }
       }
+
+      const records = entries.map(({node,role,wrapper}, index) => {
+        const body = messageContent(node, role);
+        const text = String(body.textContent || '').trim().slice(-16000);
+        if (!text) return null;
+        const cached = this.cache.get(node);
+        if (cached?.text === text && cached?.role === role) return {node,record:cached};
+        const id = wrapper?.getAttribute('data-turn-id') || wrapper?.getAttribute('data-testid') ||
+          node.getAttribute?.('data-message-id') || node.getAttribute?.('data-message-id') ||
+          role + ':' + index;
+        const code = [...(body.querySelectorAll?.('pre') || [])].slice(0,10)
+          .map(el => String(el.textContent || '').slice(0,50000));
+        const record = { id, role, text, code, timestamp: new Date().toISOString() };
+        this.cache.set(node, record); this.totalParsed++;
+        return {node,record};
+      }).filter(Boolean);
+
       records.sort((a,b) => {
         const position = a.node.compareDocumentPosition?.(b.node) || 0;
         return position & 4 ? -1 : position & 2 ? 1 : 0;
       });
-      const messages = records.map(x => x.record);
-      const version = JSON.stringify(messages.map(m => [m.id, m.role, m.text]));
-      const changed = version !== this.version; this.version = version;
-      return { messages, changed, streaming: false, blocked: false };
+      const messages = records.map(x=>x.record);
+      const version = JSON.stringify(messages.map(m=>[m.id,m.role,m.text]));
+      const changed = version !== this.version;
+      this.version = version;
+      return { messages, changed, blocked: false, streaming: false };
     }
-    clear() { this.cache = new WeakMap(); this.version = ''; }
+
+    clear() { this.cache = new WeakMap(); this.version = ''; this.route = ''; }
   }
+
   root.BobConversation = { Reader };
   if (typeof module !== 'undefined') module.exports = root.BobConversation;
 })(typeof window !== 'undefined' ? window : globalThis);
