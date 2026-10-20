@@ -4,7 +4,7 @@ on:
     branches: [main]
   pull_request:
 permissions:
-  contents: read
+  contents: write
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -23,3 +23,23 @@ jobs:
         run: npm run test:browser
       - name: Actual MV3 extension loading and refresh
         run: npm run test:extension
+      - name: Build reproducible extension ZIP
+        run: python3 scripts/package.py
+      - name: Upload verified extension package
+        uses: actions/upload-artifact@v4
+        with:
+          name: bob-extension
+          path: bob-extension.zip
+          if-no-files-found: error
+      - name: Update package in repository
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add bob-extension.zip
+          if ! git diff --cached --quiet; then
+            git commit -m "build: refresh verified Bob extension ZIP [skip ci]"
+            git push origin HEAD:main
+          fi
