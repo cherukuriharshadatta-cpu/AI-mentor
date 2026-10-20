@@ -100,6 +100,20 @@
         if(/\b(fails?|broken|crash|bug|error)\b/i.test(clause)) model.progress.knownProblems.push(fact('problem',P.redact(clause,180),message,'inferred'));
       }
     }
+    // Long/virtualized chats may only expose the AI's latest reply. A name
+    // mentioned by the assistant is a tentative clue, never a confirmed feature.
+    if (!model.identity.description && !messages.some(m => m.role === 'user')) {
+      for (const message of [...messages].reverse()) {
+        if (message.role !== 'assistant') continue;
+        const cleaned = message.text.replace(/```[\s\S]*?```/g, '').slice(0,4000);
+        const nameMatch = cleaned.match(/\b([A-Z][A-Za-z0-9-]+(?:\s+[A-Z][A-Za-z0-9-]+){1,4})\s+(?:is\s+ready|is\s+live|is\s+(?:a|the)\s+(?:website|app|game)|will\s+be)/);
+        if (!nameMatch) continue;
+        model.identity.name = fact('name', nameMatch[1], message, 'inferred');
+        model.identity.description = fact('description', nameMatch[1] + ' (mentioned by the coding AI)', message, 'inferred');
+        model.uncertainties.push('I can only see the coding AI description, not your original request. Please confirm what this project is intended to do.');
+        break;
+      }
+    }
     if(!model.identity.description && Object.keys(model.capabilities).length)
       model.identity.description=fact('description','a project with '+Object.values(model.capabilities).filter(f=>f.classification==='confirmed').map(f=>f.value).join(', '),messages.find(m=>m.role==='user')||{id:'unknown',role:'user',text:''},'inferred');
     model.identity.confidence=model.identity.description?model.identity.description.confidence:0;
