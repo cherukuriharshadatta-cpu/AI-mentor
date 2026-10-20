@@ -23,4 +23,12 @@ test('copy prompts include context and meaningful acceptance',()=>{const p=R.pla
 test('redaction removes credentials and personal identifiers',()=>{const raw='apiKey="privatevalue" Bearer abcdefg test@example.com sk-or-abcdefghijklmnopqrstuvwxyz';const safe=P.redact(raw);for(const secret of ['privatevalue','abcdefg','test@example.com','sk-or-'])assert(!safe.includes(secret));});
 test('remote review is bounded and validates evidence',()=>{const m=model('Build a static website.');const input=A.payload(m,messages('Build a static website.'));const r={id:'layout',title:'Check layout',category:'Functionality',why:'People need readable content.',does:'Checks responsive layout.',implement:'Test the existing layout.',verify:'Try narrow and wide screens.',sourceId:'u0',quote:'static website',assumption:'No additional assumption'};const valid={summary:'Check the existing site.',uncertainties:[],requirements:[r]};assert.equal(A.validate(JSON.stringify(valid),input).requirements.length,1);assert.throws(()=>A.validate(JSON.stringify({...valid,requirements:[{...r,quote:'invented quote'}]}),input));assert.throws(()=>A.validate(JSON.stringify({...valid,requirements:[{...r,implement:'<script>alert(1)</script>'}]}),input));assert.throws(()=>A.validate('not json',input));});
 test('removing features produces a meaningful delta',()=>{const a=ids(model('Build a website with login.'));const b=model('Build a website. No login.');assert(R.briefing(b,R.plan(b),a).includes('No longer applicable'));});
+test('assistant-only virtualized chat gives tentative project context, not invented checks',()=>{
+  const model=M.build([{id:'a9',role:'assistant',text:'BROOO! Pixel Arcade Dev is ready to open! Next, let us consider login and publishing.',timestamp:'2026-10-20T00:00:00Z'}]);
+  assert.equal(model.identity.name.value,'Pixel Arcade Dev');
+  assert.equal(model.identity.description.classification,'inferred');
+  assert.equal(model.identity.description.source.role,'assistant');
+  assert(!ids(model).includes('auth'));
+  assert(R.briefing(model,R.plan(model)).includes('original project request'));
+});
 console.log(checks+' project intelligence tests passed');
