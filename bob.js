@@ -59,17 +59,24 @@ If something is uncertain, ask one relevant clarifying question. Do not automati
 
   // ---------------------------------------------------------------- storage
   let saveTimer;
-  function save() {
+  let settingsWrite = Promise.resolve();
+  // Monitoring consent and pause are security-sensitive. Save them before
+  // scanning starts, not after a debounce that a quick refresh could cancel.
+  function persistSettings() {
+    const snapshot = {
+      consentAll: S.consent, paused: S.paused, introSeen: S.introSeen,
+      learned: [...S.learned], doneAll: { ...S.doneAll }
+    };
+    settingsWrite = settingsWrite.catch(() => {}).then(async () => {
+      const { bob } = await chrome.storage.local.get("bob");
+      await chrome.storage.local.set({ bob: { ...(bob || {}), ...snapshot } });
+    });
+    return settingsWrite;
+  }
+  function save(immediate = false) {
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(async () => {
-      try {
-        const { bob } = await chrome.storage.local.get("bob");
-        const b = bob || {};
-        b.consentAll = S.consent; b.paused = S.paused; b.introSeen = S.introSeen;
-        b.learned = [...S.learned]; b.doneAll = S.doneAll;
-        await chrome.storage.local.set({ bob: b });
-      } catch (e) {}
-    }, 500);
+    if (immediate) return persistSettings();
+    saveTimer = setTimeout(() => { persistSettings().catch(() => {}); }, 500);
   }
   function persistDone() {   // which safety steps were ticked, remembered per chat (last 30 chats)
     S.doneAll[ROUTE_KEY()] = [...S.done];
@@ -792,16 +799,16 @@ If something is uncertain, ask one relevant clarifying question. Do not automati
       case "reviewpreview": previewReview(); return;
       case "reviewsend": await runReview(); return;
       case "reviewcancel": S.requestController?.abort(); S.remotePreview=null; $("reviewPreview").innerHTML=""; return;
-      case "disable": S.requestController?.abort();S.consent=false;S.paused=false;stopReading();reader.clear();S.normalized=[];S.remotePreview=null;$("reviewPreview").innerHTML="";save();break;
+      case "disable": S.requestController?.abort();S.consent=false;S.paused=false;stopReading();reader.clear();S.normalized=[];S.remotePreview=null;$("reviewPreview").innerHTML="";await save(true).catch(() => {});break;
       case "height": S.height = Number(btn.dataset.h) || 0; applyDock(); B.savePref("h", String(S.height)); return;
       case "size": S.width = Number(btn.dataset.w) || 320; applyDock(); B.savePref("w", String(S.width)); return;
       case "push": S.push = !S.push; $("swPush").classList.toggle("on", S.push); $("swPush").setAttribute("aria-checked", String(S.push)); B.savePref("push", S.push ? "1" : "0"); applyDock(); return;
       case "code": { const t = $("input"); t.value += (t.value && !t.value.endsWith("\n") ? "\n" : "") + "```\n\n```"; t.focus(); return; }
       case "send": sendChat(); return;
       case "quick": { const q = QUICK[Number(btn.dataset.i)]; if (q) { setPage(true); sendChat(q[2]); } return; }
-      case "enable": S.consent = true; S.paused = false; S.introSeen = true; hideToast(); save(); startReading(); break;
-      case "pause": S.paused = true; S.requestController?.abort(); stopReading(); save(); break;
-      case "resume": S.paused = false; save(); startReading(); break;
+      case "enable": S.consent = true; S.paused = false; S.introSeen = true; hideToast(); try { await save(true); } catch { S.note = "Monitoring permission could not be saved. Recheck it after refreshing."; } startReading(); break;
+      case "pause": S.paused = true; S.requestController?.abort(); stopReading(); await save(true).catch(() => {}); break;
+      case "resume": S.paused = false; await save(true).catch(() => {}); startReading(); break;
       case "delete": if (!S.confirmDelete) { S.confirmDelete = true; break; } await wipe(); break;
       case "toastopen": hideToast(); S.tab = "chat"; $("panel").dataset.tab = "chat"; setOpen(true); return;
       case "toastclose": hideToast(); return;
