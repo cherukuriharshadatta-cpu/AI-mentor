@@ -15,7 +15,12 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  });
  assert.equal(realErrors.length,0,realErrors.join('\n'));
  await real.reload();await bob.locator('#bubble').click();
- await real.waitForFunction(() => document.querySelector('#bob-host')?.shadowRoot?.querySelector('#msgs')?.textContent?.includes('strategy game'),null,{timeout:10000});
+ await real.waitForFunction(() => document.querySelector('#bob-host')?.shadowRoot?.querySelector('#msgs')?.textContent?.includes('strategy game'),null,{timeout:6000}).catch(async error => {
+ const text=await bob.locator('#msgs').innerText().catch(e=>'UNAVAILABLE '+e.message);
+ const status=await bob.locator('#monitorBar').innerText().catch(()=>'');
+ const details=await bob.locator('#body').innerText().catch(()=>'');
+ throw new Error('Post-reload briefing missing: '+error.message+'\\nMONITOR: '+status+'\\nCHAT: '+text.slice(0,1300)+'\\nDETAILS: '+details.slice(0,800)+'\\nPAGE ERRORS: '+realErrors.join('; '));
+});
  await extension.close();fs.rmSync(profile,{recursive:true,force:true});
  console.log('Real MV3 extension injection, storage and refresh recovery passed on the fixture.');
 })().catch(e=>{console.error(e);process.exit(1);});
