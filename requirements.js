@@ -57,6 +57,8 @@
   }
   function briefing(model,requirements,previousIds=null){
     if(!model.identity.description)return 'I’m still learning what you are building. '+model.uncertainties[0];
+    if (model.identity.description.source?.role === 'assistant')
+      return 'I can see the coding AI discussing **'+model.identity.name?.value+'**, but your original project request is not visible here. I won’t guess which security or launch checks you need. **What is this project supposed to do, and who will use it?** Once confirmed, I’ll give you a focused readiness plan.';
     const ids=requirements.map(r=>r.id);
     const added=previousIds?requirements.filter(r=>!previousIds.includes(r.id)):requirements;
     const removed=previousIds?previousIds.filter(id=>!ids.includes(id)):[];
