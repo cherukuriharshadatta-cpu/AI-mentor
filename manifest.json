@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Bob \u2014 Universal AI Project Mentor",
-  "version": "3.1.0",
+  "name": "Bob — Universal AI Project Mentor",
+  "version": "3.1.1",
   "description": "A consent-based project mentor: understand, plan, verify, release and maintain your actual product.",
   "permissions": [
     "storage"

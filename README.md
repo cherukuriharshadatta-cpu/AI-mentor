@@ -2,11 +2,11 @@
 
 Bob sits beside your coding AI and explains what your actual project needs to finish, test, protect, release and maintain. It does not write the application, edit your repository, click the host page, or certify production readiness.
 
-## Install 3.1.0
+## Install 3.1.1
 
 Extract `bob-extension.zip` into a folder. In Chrome/Edge Extensions, enable Developer mode and choose **Load unpacked**, selecting the extracted folder. Alternatively load this repository's root directory. Disable older duplicate Bob extensions and refresh existing AI conversation tabs after updating.
 
-The source files in this repository are canonical. The ZIP is generated from those files; it is no longer an independent fork of an older Bob version.
+The source files in this repository are canonical. On successful CI runs, GitHub Actions builds and publishes a reproducible `bob-extension.zip` from the tested files (both in the repository and as a workflow artifact). If CI is failing, do not treat its ZIP as a verified release. Monitoring permission and pause state save immediately so a quick refresh does not silently reset them.
 
 ## Use
 
