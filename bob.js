@@ -14,8 +14,8 @@
   const cfg = Object.assign({
     models: ["nvidia/nemotron-3-nano-30b-a3b:free", "nvidia/nemotron-nano-9b-v2:free", "openrouter/free"],
     // Best-guess labels for "my message" blocks. Sites change them, so they can be overridden.
-    userSelectors: ['[data-message-author-role="user"]', '[data-testid="user-message"]', '[data-turn="user"]', '[data-testid="user-message-content"]', "user-query"],
-    assistantSelectors: ['[data-message-author-role="assistant"]', '[data-testid="assistant-message"]', '[data-turn="assistant"]', '.font-claude-message', "model-response"],
+    userSelectors: [],
+    assistantSelectors: [],
     toastGapMs: 8000,   // never pop up more often than this
   }, window.BobConfig || {});
   const HOST_ID = "bob-host", ORIGIN = location.origin;

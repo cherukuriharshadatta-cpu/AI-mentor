@@ -8,8 +8,31 @@
   const STREAMING_SELECTOR = '[data-is-streaming="true"], [data-testid="stop-button"], button[aria-label="Stop generating"], button[aria-label="Stop response"], .result-streaming';
   const ROLE_SELECTOR = '[data-message-author-role], [data-testid="user-message"], [data-testid="assistant-message"], user-query, model-response, [data-turn-role]';
 
+  // Each adapter describes message boundaries, not whole-page text.
+  // Add new integrations here and add their origins to manifest.json.
+  const adapters = [
+    { id: 'chatgpt', hosts: ['chatgpt.com', 'chat.openai.com'],
+      user: ['[data-message-author-role="user"]', '[data-turn="user"]', '[data-testid="user-message"]'],
+      assistant: ['[data-message-author-role="assistant"]', '[data-turn="assistant"]', '[data-testid="assistant-message"]'],
+      streaming: '[data-is-streaming="true"], [data-testid="stop-button"]' },
+    { id: 'claude', hosts: ['claude.ai'],
+      user: ['[data-testid="user-message"]', '[data-testid="user-message-content"]', '[data-message-author-role="user"]'],
+      assistant: ['[data-testid="assistant-message"]', '.font-claude-message', '[data-message-author-role="assistant"]'],
+      streaming: '[data-is-streaming="true"], button[aria-label="Stop response"], button[aria-label="Stop generating"]' },
+    { id: 'gemini', hosts: ['gemini.google.com'],
+      user: ['user-query', '[data-message-author-role="user"]'],
+      assistant: ['model-response', '[data-message-author-role="assistant"]'],
+      streaming: '.result-streaming, [data-is-streaming="true"], button[aria-label="Stop response"]' }
+  ];
+  const generic = { id: 'generic', user: ['[data-message-author-role="user"]', '[data-testid="user-message"]', '[data-turn="user"]'], assistant: ['[data-message-author-role="assistant"]', '[data-testid="assistant-message"]', '[data-turn="assistant"]'], streaming: STREAMING_SELECTOR };
+  function adapterFor(route) {
+    let hostname = '';
+    try { hostname = new URL(route).hostname; } catch { /* Test/custom adapter. */ }
+    return adapters.find(adapter => adapter.hosts.includes(hostname)) || generic;
+  }
+
   function roleOf(node) {
-    const attr = (node.getAttribute?.('data-message-author-role') || node.getAttribute?.('data-turn-role') || '').toLowerCase();
+    const attr = (node.getAttribute?.('data-message-author-role') || node.getAttribute?.('data-turn-role') || node.getAttribute?.('data-turn') || '').toLowerCase();
     if (attr === 'user' || attr === 'human') return 'user';
     if (attr === 'assistant' || attr === 'model') return 'assistant';
     const testId = node.getAttribute?.('data-testid') || '';
@@ -33,8 +56,8 @@
   function messageContent(node, role) {
     // Take only message content when a labelled turn contains UI actions.
     const selectors = role === 'user'
-      ? ['[data-testid="user-message"]', '[data-message-author-role="user"]', '.whitespace-pre-wrap', 'user-query']
-      : ['[data-testid="assistant-message"]', '[data-message-author-role="assistant"]', 'model-response', '.markdown', '.prose'];
+      ? ['[data-testid="user-message"]', '[data-message-author-role="user"]', '[data-testid="user-message-content"]', '.query-text', '.whitespace-pre-wrap', 'user-query']
+      : ['[data-testid="assistant-message"]', '[data-message-author-role="assistant"]', '.markdown', '.prose', '.model-response-text', 'message-content', 'model-response'];
     for (const selector of selectors) {
       const element = node.querySelector?.(selector);
       if (element && String(element.textContent || '').trim()) return element;
@@ -52,7 +75,8 @@
     read(container, { enabled, paused, route, userSelectors = [], assistantSelectors = [] }) {
       if (!enabled || paused) return { messages: [], changed: false, blocked: true, streaming: false };
       if (this.route !== route) { this.cache = new WeakMap(); this.version = ''; this.route = route; }
-      const streaming = !!container.querySelector?.(STREAMING_SELECTOR);
+      const adapter = adapterFor(route);
+      const streaming = !!container.querySelector?.(adapter.streaming);
       if (streaming) return { messages: [], changed: false, streaming: true };
 
       const entries = [];
@@ -87,8 +111,8 @@
 
       // Older ChatGPT, Claude, Gemini and custom supported role adapters.
       for (const [role, selectors] of [
-        ['user', [...userSelectors, '[data-message-author-role="user"]', '[data-testid="user-message"]', 'user-query']],
-        ['assistant', [...assistantSelectors, '[data-message-author-role="assistant"]', '[data-testid="assistant-message"]', 'model-response']]
+        ['user', [...userSelectors, ...adapter.user]],
+        ['assistant', [...assistantSelectors, ...adapter.assistant]]
       ]) {
         for (const selector of new Set(selectors)) {
           let nodes;
@@ -124,12 +148,12 @@
       const version = JSON.stringify(messages.map(m=>[m.id,m.role,m.text]));
       const changed = version !== this.version;
       this.version = version;
-      return { messages, changed, blocked: false, streaming: false };
+      return { messages, changed, blocked: false, streaming: false, platform: adapter.id };
     }
 
     clear() { this.cache = new WeakMap(); this.version = ''; this.route = ''; }
   }
 
-  root.BobConversation = { Reader };
+  root.BobConversation = { Reader, adapterFor, adapters };
   if (typeof module !== 'undefined') module.exports = root.BobConversation;
 })(typeof window !== 'undefined' ? window : globalThis);

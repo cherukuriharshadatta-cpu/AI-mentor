@@ -2,7 +2,7 @@
 
 Bob sits beside your coding AI and explains what your actual project needs to finish, test, protect, release and maintain. It does not write the application, edit your repository, click the host page, or certify production readiness.
 
-## Install 3.1.2
+## Install 3.2.0
 
 Extract `bob-extension.zip` into a folder. In Chrome/Edge Extensions, enable Developer mode and choose **Load unpacked**, selecting the extracted folder. Alternatively load this repository's root directory. Disable older duplicate Bob extensions and refresh existing AI conversation tabs after updating.
 
@@ -74,4 +74,12 @@ Build the installable package with `python3 scripts/package.py`. It includes sou
 
 ## Known limits
 
-Bob 3.1.2 supports both role-labelled messages and labelled conversation-turn wrappers; if user messages are virtualized, an AI-only name is tentative rather than a confirmed feature. Site markup can change. The observer currently recognises supported ChatGPT, Claude and Gemini message roles; on GitHub or an unrecognised interface Bob offers pasted-description mentoring and does not claim repository access. Conversation windows are bounded to 80 visible messages per role. Older virtualised messages may not be available; Bob cannot reconstruct unseen files or context. English local parsing can misread complex negation or unfamiliar terminology; use the editable model-review preview for deeper interpretation and inspect its assumptions. Bob does not run the user's project, tests, deployments or legal reviews. Live provider quality and current production website markup require testing with your own account and chosen model.
+Bob 3.2.0 supports both role-labelled messages and labelled conversation-turn wrappers; if user messages are virtualized, an AI-only name is tentative rather than a confirmed feature. Site markup can change. The observer currently recognises supported ChatGPT, Claude and Gemini message roles; on GitHub or an unrecognised interface Bob offers pasted-description mentoring and does not claim repository access. Conversation windows are bounded to 80 visible messages per role. Older virtualised messages may not be available; Bob cannot reconstruct unseen files or context. English local parsing can misread complex negation or unfamiliar terminology; use the editable model-review preview for deeper interpretation and inspect its assumptions. Bob does not run the user's project, tests, deployments or legal reviews. Live provider quality and current production website markup require testing with your own account and chosen model.
+
+## Platform adapters
+
+Bob automatically selects a ChatGPT, Claude, or Gemini reader from the page origin. After enabling monitoring, it reads rendered user/assistant message containers, waits for streaming responses, and updates guidance as the conversation changes. Pause and Disable stop reading. Chat text stays local unless you explicitly send an optional AI review.
+
+Adapters in `conversation.js` define exact hostnames, user/assistant selectors and streaming indicators. To add a platform, add its adapter, manifest content-script origins and browser fixtures. Unknown sites are not automatically granted access. This is an extensible reader, not a claim that every chat website is supported. It cannot read unrendered history, closed shadow roots, or conversations in other tabs. Site markup changes may require adapter updates.
+
+Message extraction preserves Unicode text without requiring English role headings when structural role markers are available. Local project rules currently remain English-focused.
