@@ -1,7 +1,7 @@
 # Bob AI — Development Roadmap
 **Roadmap version:** 1.0 · **Updated:** 2026-10-23 · **Status:** Planned sequencing, not a claim of delivery
 
-Companion document: **[Bob Product Blueprint](./BOB_PRODUCT_BLUEPRINT.md)**. That file controls feature scope, priority, decision history, and acceptance criteria; this one controls **execution sequence, dependencies, milestones, release gates and evidence**.
+Companion documents: **[Simple Product Blueprint](./BOB_PRODUCT_BLUEPRINT.md)** for the easy-to-read feature tracker and **[Technical Blueprint](./BOB_TECHNICAL_BLUEPRINT.md)** for detailed scope, dependencies, decisions, and acceptance criteria. This roadmap controls **execution sequence, dependencies, milestones, release gates and evidence**.
 
 ## 0. Critical current-state checkpoint
 
@@ -190,7 +190,7 @@ Each milestone/ticket should eventually link a GitHub issue and specify:
 - **Tests:** command(s), outcome(s), skipped checks and limitations.
 - **Next action** and the blocker if one exists.
 
-Update [the blueprint](./BOB_PRODUCT_BLUEPRINT.md) when product scope or priority changes. Update this roadmap when implementation sequence or gates change. Never declare roadmap milestones "done" based on a model's self-report alone.
+Update [the simple tracker](./BOB_PRODUCT_BLUEPRINT.md) and [the technical blueprint](./BOB_TECHNICAL_BLUEPRINT.md) when product scope or priority changes. Update this roadmap when implementation sequence or gates change. Never declare roadmap milestones "done" based on a model's self-report alone.
 
 ---
 
