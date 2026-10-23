@@ -1,5 +1,7 @@
 # Bob — Universal AI Project Mentor
 
+> **Bob AI product planning:** The current repository is the **Bob 3.2.0 browser extension**; the standalone universal AI platform is a **future product direction**, not an implemented feature of this extension. See the [Bob Product Blueprint](docs/BOB_PRODUCT_BLUEPRINT.md) for the 16 agreed feature groups, decisions and acceptance criteria, and the [Bob Development Roadmap](docs/BOB_DEVELOPMENT_ROADMAP.md) for phased delivery and evidence-based milestones.
+
 Bob sits beside your coding AI and explains what your actual project needs to finish, test, protect, release and maintain. It does not write the application, edit your repository, click the host page, or certify production readiness.
 
 ## Install 3.2.0
